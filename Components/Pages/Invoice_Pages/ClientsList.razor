@@ -1,0 +1,195 @@
+﻿@page "/clients"
+@rendermode InteractiveServer
+@using Client_Invoice_System.Models
+@using Client_Invoice_System.Repositories
+@using Client_Invoice_System.Repository
+@inject ClientRepository ClientRepo
+@inject NavigationManager Navigation
+@using Client_Invoice_System.Components
+<Breadcrumb />
+
+<div class="">
+    <div class="row mb-3">
+        <div class="col-12 col-md-6">
+            <h3>Clients (@(clients?.Count ?? 0))</h3>
+        </div>
+        <div class="col-md-6 d-flex justify-content-end">
+            <button class="btn btn-primary w-30 w-md-auto" @onclick="AddClient">Add New Client</button>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card p-3 shadow-lg rounded-4 bg-white">
+                <p id="noResults" class="text-center text-danger d-none">No matching records found.</p>
+                <div class="table-responsive">
+                    <table id="clientTable" class="table table-striped">
+                        <thead class="">
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Address</th>
+                                <th>Phone</th>
+                                <th>Country</th>
+                                <th>Currency</th>
+                                <th>Client ID</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (clients != null && clients.Any())
+                            {
+                                @foreach (var client in clients)
+                                {
+                                    <tr>
+                                        <td>@client.Name</td>
+                                        <td class="text-truncate">@client.Email</td>
+                                        <td class="text-truncate">@client.Address</td>
+                                        <td>@client.PhoneNumber</td>
+                                        <td>@(client.CountryCurrency?.CountryName ?? "N/A")</td>
+                                        <td>
+                                            @(client.CustomCurrency?.Trim() != ""
+                                                ? client.CustomCurrency
+                                                : client.CountryCurrency?.CurrencyName ?? "N/A")
+                                            (@(client.CountryCurrency?.CurrencyCode ?? "-") - @(client.CountryCurrency?.Symbol ?? "-"))
+                                        </td>
+                                        <td>@client.ClientIdentifier</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-warning me-2" @onclick="() => EditClient(client.ClientId)">Edit</button>
+                                            <button class="btn btn-sm btn-danger" @onclick="() => ShowDeleteModal(client.ClientId, client.Name)">Delete</button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted">No clients found</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+@if (isDeleteModalVisible)
+{
+    <div class="modal-overlay">
+        <div class="delete-modal">
+            <p class="fw-bold">Are you sure you want to delete <span class="text-danger">@clientToDeleteName</span>?</p>
+            <div class="d-flex flex-column flex-md-row justify-content-center gap-3">
+                <button class="btn btn-danger w-100 w-md-auto" @onclick="ConfirmDelete">Yes, Delete</button>
+                <button class="btn btn-secondary w-100 w-md-auto" @onclick="CancelDelete">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1050;
+    }
+
+    .delete-modal {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        text-align: center;
+        max-width: 90%;
+        width: 400px;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+        min-width: 100%;
+        display: block;
+        white-space: nowrap;
+    }
+
+    td:last-child {
+        white-space: nowrap; /* Prevent button wrapping */
+    }
+
+    tbody td {
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    /* Keep Headers Left-Aligned */
+    thead th {
+        text-align: center;
+    }
+    .btn-sm {
+        min-width: 70px; /* Ensure buttons have equal width */
+    }
+</style>
+
+@code {
+    private List<Client> clients;
+    private bool isDeleteModalVisible = false;
+    private int clientToDeleteId;
+    private string clientToDeleteName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            clients = (await ClientRepo.GetAllAsync(true)).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading clients: {ex.Message}");
+        }
+    }
+
+    private void AddClient()
+    {
+        Navigation.NavigateTo("/add-client");
+    }
+
+    private void EditClient(int id)
+    {
+        Navigation.NavigateTo($"/edit-client/{id}");
+    }
+
+    private void ShowDeleteModal(int id, string name)
+    {
+        clientToDeleteId = id;
+        clientToDeleteName = name;
+        isDeleteModalVisible = true;
+    }
+
+    private void CancelDelete()
+    {
+        isDeleteModalVisible = false;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        try
+        {
+            await ClientRepo.DeleteAsync(clientToDeleteId);
+            clients = (await ClientRepo.GetAllAsync(true)).ToList();
+            isDeleteModalVisible = false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting client: {ex.Message}");
+        }
+    }
+}

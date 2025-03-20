@@ -1,0 +1,204 @@
+﻿@page "/employees"
+@rendermode InteractiveServer
+@using Client_Invoice_System.Models
+@using Client_Invoice_System.Repositories
+@using System.Globalization
+@using Client_Invoice_System.Repository
+@inject EmployeeRepository EmployeeRepository
+@inject NavigationManager Navigation
+@using Client_Invoice_System.Components
+
+<Breadcrumb />
+
+<div class="">
+    <!-- Page Header -->
+    <div class="row mb-3 align-items-center">
+        <div class="col-md-6">
+            <h3>Employees (@(employees?.Count ?? 0))</h3>
+        </div>
+        <div class="col-md-6 d-flex justify-content-end">
+            <button class="btn btn-primary w-30 w-md-auto" @onclick="NavigateToAddEmployee">Add Employee</button>
+        </div>
+
+    </div>
+
+    <!-- Employee Table -->
+    <div class="card p-3 shadow-lg rounded-4 bg-white">
+        @if (employees != null && employees.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Designation</th>
+                            <th>Hourly Rate</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var employee in employees)
+                        {
+                            <tr>
+                                <td>@employee.EmployeeName</td>
+                                <td>@employee.Designation</td>
+                                <td>@employee.HourlyRate.ToString("C", new CultureInfo("en-US"))</td>
+                                <td class="nowrap">
+                                    <button class="btn btn-sm btn-warning me-2" @onclick="() => NavigateToEditEmployee(employee.EmployeeId)">Edit</button>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => ShowDeleteModal(employee.EmployeeId, employee.EmployeeName)">Delete</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <p class="text-center text-muted">No employees found.</p>
+        }
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+@if (isDeleteModalVisible)
+{
+    <div class="modal-overlay">
+        <div class="delete-modal">
+            <p class="fw-bold">Are you sure you want to delete <span class="text-danger">@employeeToDeleteName</span>?</p>
+            <div class="d-flex flex-column flex-md-row justify-content-center gap-3">
+                <button class="btn btn-danger w-100 w-md-auto" @onclick="ConfirmDelete">Yes, Delete</button>
+                <button class="btn btn-secondary w-100 w-md-auto" @onclick="CancelDelete">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    /* Page Container */
+    .container {
+        max-width: 1200px;
+    }
+
+    /* Table Wrapper */
+    .table-responsive {
+        overflow-x: auto;
+        min-width: 100%;
+        display: block;
+        white-space: nowrap;
+    }
+
+    /* Table Styling */
+    th, td {
+        min-width: 150px;
+    }
+
+        td.nowrap {
+            white-space: nowrap;
+        }
+
+    /* Modal Styling */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1050;
+    }
+
+    .delete-modal {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        text-align: center;
+        max-width: 400px;
+    }
+
+    /* Buttons */
+    .btn-sm {
+        min-width: 70px;
+    }
+    /* Center Align Table Data */
+    tbody td {
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    /* Keep Headers Left-Aligned */
+    thead th {
+        text-align: center;
+    }
+    /* Responsive Adjustments */
+    /* media (max-width: 768px) { */
+    /*     th, td */
+
+    /* { */
+    /*     min-width: 100px; */
+    /* }*/
+
+        /* }*/
+    </style> 
+
+@code {
+    private List<Employee> employees = new();
+    private bool isDeleteModalVisible = false;
+    private int employeeToDelete;
+    private string employeeToDeleteName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            employees = (await EmployeeRepository.GetAllAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading employees: {ex.Message}");
+        }
+    }
+
+    private void NavigateToAddEmployee()
+    {
+        Navigation.NavigateTo("/add-edit-employee");
+    }
+
+    private void NavigateToEditEmployee(int employeeId)
+    {
+        Navigation.NavigateTo($"/add-edit-employee/{employeeId}");
+    }
+
+    private void ShowDeleteModal(int employeeId, string name)
+    {
+        employeeToDelete = employeeId;
+        employeeToDeleteName = name;
+        isDeleteModalVisible = true;
+    }
+
+    private void CancelDelete()
+    {
+        isDeleteModalVisible = false;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        try
+        {
+            await EmployeeRepository.DeleteAsync(employeeToDelete);
+            employees = (await EmployeeRepository.GetAllAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting employee: {ex.Message}");
+        }
+        finally
+        {
+            isDeleteModalVisible = false;
+        }
+    }
+}

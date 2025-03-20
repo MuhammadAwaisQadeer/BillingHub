@@ -1,0 +1,241 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@using Client_Invoice_System.Models
+@using Client_Invoice_System.Repositories
+@using Client_Invoice_System.Repository
+@inject ClientRepository ClientRepo
+@inject InvoiceRepository InvoiceRepo
+@inject IJSRuntime JSRuntime
+
+<div class="container">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header text-center mt-4">
+        <h1 class="dashboard-title"><i class="bi bi-bar-chart"></i> Dashboard Overview</h1>
+        <hr />
+    </div>
+
+    <!-- Filter Section -->
+    <div class="row filter-section mb-4 p-3 d-flex justify-content-center align-items-center">
+        <div class="col-md-3 col-12 mb-3">
+            <label for="dateFilter"><i class="bi bi-calendar"></i> Select Date:</label>
+            <input type="date" class="form-control" @bind="SelectedDate" @bind:event="oninput" />
+        </div>
+        <div class="col-md-3 col-12 mb-3">
+            <label for="monthFilter"><i class="bi bi-calendar-month"></i> Select Month:</label>
+            <select class="form-select" @bind="SelectedMonth">
+                <option value="">All</option>
+                @for (int i = 1; i <= 12; i++)
+                {
+                    <option value="@i">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(i)</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-3 col-12 mb-3">
+            <label for="clientFilter"><i class="bi bi-person"></i> Select Client:</label>
+            <select class="form-select" @bind="SelectedClientId">
+                <option value="">All</option>
+                @foreach (var client in Clients)
+                {
+                    <option value="@client.ClientId">@client.Name</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    <!-- Dashboard Cards Section -->
+    <div class="row row-cols-1 row-cols-md-4 g-4 text-center">
+        @foreach (var card in DashboardCards)
+        {
+            <div class="col">
+                <div class="card shadow-lg rounded-lg p-3 @card.BackgroundClass order-card">
+                    <div class="card-body">
+                        <i class="@card.Icon icon-style display-4 mb-3"></i>
+                        <h6 class="fw-bold">@card.Title</h6>
+                        <h2 class="fw-bold">@card.Value</h2>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Charts Section -->
+    <div class="row mt-5">
+        <div class="col-md-6 col-12 mb-4">
+            <h4 class="text-center"><i class="bi bi-graph-up"></i> Total Revenue Over Time</h4>
+            <canvas id="barChartCanvas"></canvas>
+        </div>
+        <div class="col-md-6 col-12 mb-4">
+            <h4 class="text-center"><i class="bi bi-pie-chart"></i> Paid vs Unpaid Invoices</h4>
+            <canvas id="pieChartCanvas"></canvas>
+        </div>
+    </div>
+
+    <style>
+        .chart-canvas {
+            max-width: 450px;
+            width: 100%;
+            margin: auto;
+        }
+    </style>
+</div>
+
+@code {
+    // Backing fields for filter properties
+    private DateTime? _selectedDate;
+    private int? _selectedMonth;
+    private int? _selectedClientId;
+
+    // Filter properties with setters that reload data when changed
+    private DateTime? SelectedDate
+    {
+        get => _selectedDate;
+        set
+        {
+            _selectedDate = value;
+            _ = LoadDashboardData();
+        }
+    }
+    private int? SelectedMonth
+    {
+        get => _selectedMonth;
+        set
+        {
+            _selectedMonth = value;
+            _ = LoadDashboardData();
+        }
+    }
+    private int? SelectedClientId
+    {
+        get => _selectedClientId;
+        set
+        {
+            _selectedClientId = value;
+            _ = LoadDashboardData();
+        }
+    }
+
+    // Data for dropdowns, cards, and charts
+    private List<Client> Clients = new();
+    private List<DashboardCard> DashboardCards = new();
+    private List<ChartData> RevenueData = new();
+    private List<ChartData> InvoiceData = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClients();
+        await LoadDashboardData();
+    }
+
+    private async Task LoadClients()
+    {
+        Clients = await ClientRepo.GetAllClientsWithDetailsAsync();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            // Get filtered invoices
+            var invoices = await InvoiceRepo.GetFilteredInvoicesAsync(SelectedDate, SelectedMonth, SelectedClientId);
+            var totalRevenue = invoices.Where(i => i.IsPaid).Sum(i => i.TotalAmount);
+            var unpaidInvoices = invoices.Where(i => !i.IsPaid).Sum(i => i.TotalAmount);
+
+            int totalEmployees = 0;
+            int activeContracts = 0;
+
+            // Check if a client filter is applied
+            bool isFilterApplied = SelectedClientId.HasValue || SelectedDate.HasValue || SelectedMonth.HasValue;
+            if (isFilterApplied)
+            {
+                totalEmployees = 0;
+                if (SelectedClientId.HasValue)
+                {
+                    var client = await ClientRepo.GetClientWithResourcesAsync(SelectedClientId.Value);
+                    activeContracts = client?.Resources?.Count(r => r.IsActive) ?? 0;
+
+                    // ✅ Fetch employees linked to this client
+                    var employees = await ClientRepo.GetEmployeesByClientIdAsync(SelectedClientId.Value);
+                    totalEmployees = employees.Count;
+                }
+            }
+            else
+            {
+                totalEmployees = await ClientRepo.GetTotalEmployeesAsync();
+                activeContracts = await ClientRepo.GetActiveContractsCountAsync();
+            }
+
+            UpdateDashboardCards(totalRevenue, unpaidInvoices, totalEmployees, activeContracts);
+            UpdateChartData(invoices);
+            await LoadCharts();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error fetching dashboard data: {ex.Message}");
+        }
+    }
+
+
+    private void UpdateDashboardCards(decimal totalRevenue, decimal unpaidInvoices, int totalEmployees, int activeContracts)
+    {
+        DashboardCards = new List<DashboardCard>
+        {
+            new DashboardCard("Total Revenue", totalRevenue.ToString("C"), "bi bi-cash-coin", "bg-c-blue"),
+            new DashboardCard("Unpaid Invoices", unpaidInvoices.ToString("C"), "bi bi-exclamation-triangle-fill", "bg-c-green"),
+            new DashboardCard("Total Employees", totalEmployees.ToString(), "bi bi-person-badge", "bg-c-orange"),
+            new DashboardCard("Active Contracts", activeContracts.ToString(), "bi bi-file-earmark-text", "bg-c-purple")
+        };
+
+        StateHasChanged();
+    }
+
+    private void UpdateChartData(List<Invoice> invoices)
+    {
+        // Prepare RevenueData grouped by month
+        RevenueData = invoices
+            .GroupBy(i => i.CreatedAt.Month)
+            .Select(g => new ChartData
+                {
+                    Label = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(g.Key),
+                    Value = g.Sum(i => i.TotalAmount)
+                })
+            .ToList();
+
+        // Prepare InvoiceData for a pie chart: Paid vs Unpaid
+        InvoiceData = new List<ChartData>
+        {
+            new ChartData { Label = "Paid", Value = invoices.Where(i => i.IsPaid).Sum(i => i.TotalAmount) },
+            new ChartData { Label = "Unpaid", Value = invoices.Where(i => !i.IsPaid).Sum(i => i.TotalAmount) }
+        };
+
+        StateHasChanged();
+    }
+
+    private async Task LoadCharts()
+    {
+        await JSRuntime.InvokeVoidAsync("createBarChart", "barChartCanvas", RevenueData);
+        await JSRuntime.InvokeVoidAsync("createPieChart", "pieChartCanvas", InvoiceData);
+    }
+
+    // Dashboard Card and Chart Data classes
+    private class DashboardCard
+    {
+        public string Title { get; }
+        public string Value { get; }
+        public string Icon { get; }
+        public string BackgroundClass { get; }
+
+        public DashboardCard(string title, string value, string icon, string backgroundClass)
+        {
+            Title = title;
+            Value = value;
+            Icon = icon;
+            BackgroundClass = backgroundClass;
+        }
+    }
+
+    private class ChartData
+    {
+        public string Label { get; set; }
+        public decimal Value { get; set; }
+    }
+}

@@ -1,0 +1,56 @@
+﻿@inject NavigationManager NavManager
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/">Home</a></li>
+        @foreach (var item in Breadcrumbs)
+        {
+            if (item.IsActive)
+            {
+                <li class="breadcrumb-item active" aria-current="page">@item.Title</li>
+            }
+            else
+            {
+                <li class="breadcrumb-item"><a href="@item.Url">@item.Title</a></li>
+            }
+        }
+    </ol>
+</nav>
+
+@code {
+    private List<BreadcrumbItem> Breadcrumbs = new();
+
+    protected override void OnInitialized()
+    {
+        string currentUrl = NavManager.Uri.Replace(NavManager.BaseUri, "").Trim('/');
+
+        var routes = new Dictionary<string, string>
+        {
+            { "clients", "Clients" },
+            { "employees", "Employees" },
+            { "resources", "Active Contracts" },
+            { "owner-profile", "Owner Profile" },
+            { "invoicesPage", "Invoice" }
+        };
+
+        var parts = currentUrl.Split('/');
+        string accumulatedUrl = "/";
+
+        foreach (var part in parts)
+        {
+            if (routes.ContainsKey(part))
+            {
+                accumulatedUrl += part;
+                Breadcrumbs.Add(new BreadcrumbItem { Title = routes[part], Url = accumulatedUrl, IsActive = part == parts.Last() });
+                accumulatedUrl += "/";
+            }
+        }
+    }
+
+    private class BreadcrumbItem
+    {
+        public string Title { get; set; }
+        public string Url { get; set; }
+        public bool IsActive { get; set; }
+    }
+}

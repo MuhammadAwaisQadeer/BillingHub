@@ -1,0 +1,219 @@
+﻿@page "/resources"
+@rendermode InteractiveServer
+@using Client_Invoice_System.Models
+@using Client_Invoice_System.Repository
+@inject NavigationManager Navigation
+@inject ResourceRepository ResourceRepository
+@inject EmployeeRepository EmployeeRepository
+@inject ClientRepository ClientRepository
+@using Client_Invoice_System.Components
+<Breadcrumb />
+
+<div class="">
+    <!-- Page Header -->
+    <div class="row mb-3 align-items-center">
+        <div class="col-md-6">
+            <h3>Manage Contracts (@(ResourcesList?.Count ?? 0))</h3>
+        </div>
+        <div class="col-md-6 d-flex justify-content-end">
+            <button class="btn btn-primary w-30 w-md-auto" @onclick="NavigateToAddResource">Add Contract</button>
+        </div>
+    </div>
+
+    <!-- Contract Table -->
+    <div class="card p-3 shadow-lg rounded-4 bg-white">
+        @if (ResourcesList != null && ResourcesList.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead class="">
+                        <tr>
+                            <th>Client</th>
+                            <th>Resource Name</th>
+                            <th>Employee</th>
+                            <th>Consumed Hours</th>
+                            <th>Contract Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var resource in ResourcesList)
+                        {
+                            <tr>
+                                <td>@(resource.Client?.Name ?? "Unknown")</td>
+                                <td>@resource.ResourceName</td>
+                                <td>@(resource.Employee?.EmployeeName ?? "Unknown")</td>
+                                <td>@resource.ConsumedTotalHours</td>
+                                <td>
+                                    <span class="badge @(resource.IsActive ? "bg-success" : "bg-danger")">
+                                        @(resource.IsActive ? "Active" : "Ended")
+                                    </span>
+                                </td>
+                                <td class="nowrap">
+                                    <button class="btn btn-sm btn-warning me-2" @onclick="() => NavigateToEditResource(resource.ResourceId)">Edit</button>
+                                    <button class="btn btn-sm btn-danger me-2" @onclick="() => ShowDeleteModal(resource.ResourceId, resource.ResourceName)">Delete</button>
+                                    <button class="btn btn-sm btn-info" @onclick="() => ToggleContractStatus(resource)">
+                                        @(resource.IsActive ? "End Contract" : "Activate")
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <p class="text-center text-muted">No contracts found.</p>
+        }
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+@if (isDeleteModalVisible)
+{
+    <div class="modal-overlay">
+        <div class="delete-modal">
+            <p class="fw-bold">Are you sure you want to delete <span class="text-danger">@resourceToDeleteName</span>?</p>
+            <div class="d-flex flex-column flex-md-row justify-content-center gap-3">
+                <button class="btn btn-danger w-100 w-md-auto" @onclick="ConfirmDelete">Yes, Delete</button>
+                <button class="btn btn-secondary w-100 w-md-auto" @onclick="CancelDelete">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    /* Page Container */
+    .container {
+        max-width: 1200px;
+    }
+
+    /* Table Wrapper */
+    .table-responsive {
+        overflow-x: auto;
+        min-width: 100%;
+        display: block;
+        white-space: nowrap;
+    }
+
+    /* Table Styling */
+    th, td {
+        min-width: 150px;
+    }
+
+        td.nowrap {
+            white-space: nowrap;
+        }
+
+    /* Modal Styling */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1050;
+    }
+
+    .delete-modal {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        text-align: center;
+        max-width: 400px;
+    }
+
+    /* Buttons */
+    .btn-sm {
+        min-width: 70px;
+    }
+
+    /* Center Align Table Data */
+    tbody td {
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    /* Keep Headers Left-Aligned */
+    thead th {
+        text-align: center;
+    }
+    /* Responsive Adjustments */
+    /* media (max-width: 768px) { */
+    /*     th, td */
+
+    /* { */
+    /*     min-width: 120px; */
+    /* } */
+
+    /* .btn-sm { */
+    /*     width: 100%; */
+    /* } */
+
+    /* } */
+    </style>
+
+
+@code {
+    private List<Resource> ResourcesList = new();
+    private bool isDeleteModalVisible = false;
+    private int resourceToDelete;
+    private string resourceToDeleteName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ResourcesList = (await ResourceRepository.GetAllAsync()).ToList();
+    }
+
+    private void NavigateToAddResource()
+    {
+        Navigation.NavigateTo("/add-edit-resource");
+    }
+
+    private void NavigateToEditResource(int resourceId)
+    {
+        Navigation.NavigateTo($"/add-edit-resource/{resourceId}");
+    }
+
+    private void ShowDeleteModal(int resourceId, string name)
+    {
+        resourceToDelete = resourceId;
+        resourceToDeleteName = name;
+        isDeleteModalVisible = true;
+    }
+
+    private void CancelDelete()
+    {
+        isDeleteModalVisible = false;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        try
+        {
+            await ResourceRepository.DeleteAsync(resourceToDelete);
+            ResourcesList = (await ResourceRepository.GetAllAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting resource: {ex.Message}");
+        }
+        finally
+        {
+            isDeleteModalVisible = false;
+        }
+    }
+
+    private async Task ToggleContractStatus(Resource resource)
+    {
+        resource.IsActive = !resource.IsActive;
+        await ResourceRepository.UpdateAsync(resource);
+        ResourcesList = (await ResourceRepository.GetAllAsync()).ToList();
+    }
+}

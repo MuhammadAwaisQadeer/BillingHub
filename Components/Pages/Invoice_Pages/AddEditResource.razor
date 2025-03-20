@@ -1,0 +1,97 @@
+﻿@page "/add-edit-resource/{ResourceId:int?}"
+@rendermode InteractiveServer
+@using Client_Invoice_System.Models
+@using Client_Invoice_System.Repository
+@inject NavigationManager Navigation
+@inject ResourceRepository ResourceRepository
+@inject EmployeeRepository EmployeeRepository
+@inject ClientRepository ClientRepository
+@* <Breadcrumb /> *@
+
+<h3 class="text-primary text-center">@(ResourceId == null ? "Add Contracts" : "Edit Contracts")</h3>
+
+<EditForm Model="EditingResource" OnValidSubmit="SaveResource">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="d-flex justify-content-center">
+        <div class="card shadow p-4" style="max-width: 500px; width: 100%;">
+            <div class="mb-3">
+                <label class="form-label fw-bold">Client</label>
+                <InputSelect class="form-control" @bind-Value="EditingResource.ClientId">
+                    <option value="">Select Client</option>
+                    @foreach (var client in Clients)
+                    {
+                        <option value="@client.ClientId">@client.Name</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Resource Name</label>
+                <InputText class="form-control" @bind-Value="EditingResource.ResourceName" required />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Employee</label>
+                <InputSelect class="form-control" @bind-Value="EditingResource.EmployeeId">
+                    <option value="">Select Employee</option>
+                    @foreach (var emp in Employees)
+                    {
+                        <option value="@emp.EmployeeId">@emp.EmployeeName</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Consumed Hours</label>
+                <InputNumber class="form-control" @bind-Value="EditingResource.ConsumedTotalHours" step="0.01" required />
+            </div>
+
+           
+
+            <div class="d-flex justify-content-end gap-2">
+                <button type="submit" class="btn btn-primary">@(EditingResource.ResourceId == 0 ? "Add" : "Update") Resource</button>
+                <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+</EditForm>
+@code {
+    [Parameter] public int? ResourceId { get; set; }
+    private Resource EditingResource = new();
+    private List<Client> Clients = new();
+    private List<Employee> Employees = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Clients = (await ClientRepository.GetAllAsync()).ToList();
+        Employees = (await EmployeeRepository.GetAllAsync()).ToList();
+        // if (EditingResource.DueDate == null || EditingResource.DueDate == DateTime.MinValue)
+        // {
+        //     EditingResource.DueDate = DateTime.Today;
+        // }
+        if (ResourceId.HasValue)
+        {
+            EditingResource = await ResourceRepository.GetByIdAsync(ResourceId.Value) ?? new();
+        }
+    }
+    private async Task SaveResource()
+    {
+        if (EditingResource.ResourceId == 0)
+        {
+            await ResourceRepository.AddAsync(EditingResource);
+        }
+        else
+        {
+            await ResourceRepository.UpdateAsync(EditingResource);
+        }
+
+        Navigation.NavigateTo("/resources");
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/resources");
+    }
+}
