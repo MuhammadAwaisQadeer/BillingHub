@@ -1,21 +1,23 @@
 ﻿using Client_Invoice_System.Data;
 using Client_Invoice_System.Models;
-using Client_Invoice_System.Repository;
+using Client_Invoice_System.Repositories;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Client_Invoice_System.Repositories
+namespace Client_Invoice_System.Repository
 {
     public class InvoiceRepository : GenericRepository<Invoice>
     {
-        public InvoiceRepository(ApplicationDbContext context) : base(context) { }
+        public InvoiceRepository(IDbContextFactory<ApplicationDbContext> contextFactory)
+            : base(contextFactory) { }
 
         public async Task<List<Invoice>> GetFilteredInvoicesAsync(DateTime? date, int? month, int? clientId)
         {
-            IQueryable<Invoice> query = _context.Invoices.AsNoTracking();
+            using var context = _contextFactory.CreateDbContext();
+            IQueryable<Invoice> query = context.Invoices.AsNoTracking();
 
             if (date.HasValue)
             {
@@ -37,17 +39,26 @@ namespace Client_Invoice_System.Repositories
 
         public async Task<decimal> GetTotalRevenueAsync()
         {
-            return await _context.Invoices.Where(i => i.IsPaid).SumAsync(i => (decimal?)i.TotalAmount) ?? 0;
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Invoices
+                               .Where(i => i.IsPaid)
+                               .SumAsync(i => (decimal?)i.TotalAmount) ?? 0;
         }
 
         public async Task<decimal> GetUnpaidInvoicesAmountAsync()
         {
-            return await _context.Invoices.Where(i => !i.IsPaid).SumAsync(i => (decimal?)i.TotalAmount) ?? 0;
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Invoices
+                               .Where(i => !i.IsPaid)
+                               .SumAsync(i => (decimal?)i.TotalAmount) ?? 0;
         }
 
-        //public async Task<int> GetOverdueInvoicesCountAsync()
-        //{
-        //    return await _context.Invoices.CountAsync(i => !i.IsPaid && i.DueDate < DateTime.UtcNow);
-        //}
+        // Uncomment and adjust the following method if you need to track overdue invoices.
+        // public async Task<int> GetOverdueInvoicesCountAsync()
+        // {
+        //     using var context = _contextFactory.CreateDbContext();
+        //     return await context.Invoices
+        //                        .CountAsync(i => !i.IsPaid && i.DueDate < DateTime.UtcNow);
+        // }
     }
 }

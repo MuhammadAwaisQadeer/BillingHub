@@ -8,10 +8,11 @@ namespace Client_Invoice_System.Models
         [Key]
         public int Id { get; set; }
 
-        [Required]
+        [Required(ErrorMessage = "Owner Name is required")]
         public string OwnerName { get; set; }
 
-        [Required, EmailAddress]
+        [Required(ErrorMessage = "Billing Email is required")]
+        [EmailAddress(ErrorMessage = "Invalid email format")]
         public string BillingEmail { get; set; }
 
         // Foreign Key for Country and Currency
@@ -21,23 +22,32 @@ namespace Client_Invoice_System.Models
         [ForeignKey("CountryCurrencyId")]
         public virtual CountryCurrency CountryCurrency { get; set; }
 
-        // Optional: Override currency if different from country default
-        public string? CustomCurrency { get; set; } 
-
+        // Optional: Override currency if different from country default +923046567897
+        public string? CustomCurrency { get; set; }
+        [Required(ErrorMessage = "Phone Number is required")]
+        [StringLength(13, ErrorMessage = "Phone number cannot exceed 13 characters.")]
+        [RegularExpression(@"^\+92\d{10}$", ErrorMessage = "Phone number must be in the format +92XXXXXXXXXX")]
         public string PhoneNumber { get; set; }
+        [Required(ErrorMessage = "Billing Address is Required")]
         public string BillingAddress { get; set; }
+        [Required(ErrorMessage = "Bank Name is Required")]
         public string BankName { get; set; }
-        public string Swiftcode { get; set; }
-        public string BranchAddress { get; set; }
-        public string BeneficeryAddress { get; set; }
 
-        [Required]
+        [Required(ErrorMessage = "Swift Code is Required")]
+        public string Swiftcode { get; set; }
+
+        [Required(ErrorMessage = "Branch Address is required")]
+        public string BranchAddress { get; set; }
+
+        [Required(ErrorMessage = "Beneficiary Address is required")]
+        public string BeneficeryAddress { get; set; }
+        [Required(ErrorMessage = "IBAN Number is required")]
         public string IBANNumber { get; set; }
 
+        [Required(ErrorMessage = "Account Title is required")]
         public string AccountTitle { get; set; }
-        public string AccountNumber { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow; // Set default on creation
 
-        public DateTime? UpdatedAt { get; set; } // Nullable, only updates when modified
+        [Required(ErrorMessage = "Account Number is required")]
+        public string AccountNumber { get; set; }
     }
 }

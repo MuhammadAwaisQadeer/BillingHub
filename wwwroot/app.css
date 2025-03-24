@@ -50,6 +50,11 @@ h1:focus {
     border-color: #929292;
 }
 
+.breadcrumb {
+    background: none;
+    padding: 10px;
+    font-size: 16px;
+}
 
 .breadcrumb-item a {
     text-decoration: none;
@@ -61,7 +66,7 @@ h1:focus {
     }
 
 .breadcrumb-item + .breadcrumb-item::before {
-    content: "›";
+    content: ">";
     padding: 0 10px;
     color: #6c757d;
     font-weight: bold;
@@ -70,4 +75,10 @@ h1:focus {
 .breadcrumb-item.active {
     font-weight: bold;
     color: #343a40;
+}
+
+.breadcrumb-container {
+    display: flex;
+    align-items: baseline; /* Aligns text properly with the breadcrumb */
+    gap: 5px;
 }

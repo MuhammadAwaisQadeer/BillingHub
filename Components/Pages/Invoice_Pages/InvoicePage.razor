@@ -8,10 +8,10 @@
 @inject ClientRepository ClientRepo
 @inject IJSRuntime JS
 
-<div>
+<div class="d-flex align-items-center">
     <Breadcrumb />
 </div>
-<h3>Invoice Management</h3>
+<h3 class="mb-4 fw-bold">Invoice Management</h3>
 
 <div class="d-flex align-items-center gap-2 mb-3">
     <select class="form-control w-25" @bind="SelectedClientId">
@@ -26,28 +26,61 @@
     <button class="btn btn-primary" @onclick="GenerateInvoice">Generate Invoice</button>
 </div>
 
-<hr class="mb-4" />
 
 <!-- Invoice Table -->
 <div class="card p-3 shadow-lg rounded-4 bg-white">
-    <h4 class="mb-3 fw-bold">Existing Invoices</h4>
-    @if (Invoices != null && Invoices.Any())
+
+    <!-- Search Filter -->
+
+    <div class="row mb-3 align-items-center">
+
+        <div class="col-12 col-md-6">
+            <h4 class="mb-3 fw-bold">Existing Invoices</h4>
+        </div>
+
+        <div class="col-12 col-md-6">
+            <div class="d-flex flex-wrap justify-content-end gap-2">
+                <select class="form-control w-auto" @onchange="GetInvoiceByStatus">
+                    <option value="">All</option>
+                    <option value="true">Paid</option>
+                    <option value="false">Unpaid</option>
+                </select>
+
+                <select class="form-control w-auto" @onchange="GetInvoiceByEmailStatus">
+                    <option value="">All</option>
+                    <option value="Sent">Sent</option>
+                    <option value="Not Sent">Not Sent</option>
+                </select>
+
+                <div class="input-group shadow rounded" style="max-width: 300px;">
+                    <input type="text" class="form-control form-control-sm border-primary rounded-start" placeholder="🔍 Search..." @bind="searchQuery" @oninput="FilterInvoices" />
+                    <button class="btn btn-primary fw-bold px-3" @onclick="FilterInvoices">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+    @if (pagedInvoices != null && pagedInvoices.Any())
     {
         <div class="table-responsive">
             <table class="table table-striped">
                 <thead>
                     <tr>
-                        <th>Client</th>
-                        <th>Invoice Date</th>
-                        <th>Total Amount</th>
-                        <th>Currency</th>
-                        <th>Status</th>
-                        <th>Email Status</th>
-                        <th>Actions</th>
+                        <th><i class="bi bi-person"></i> Client</th>
+                        <th><i class="bi bi-calendar"></i> Invoice Date</th>
+                        <th><i class="bi bi-currency-dollar"></i> Total Amount</th>
+                        <th><i class="bi bi-currency-exchange"></i> Currency</th>
+                        <th><i class="bi bi-info-circle"></i> Status</th>
+                        <th><i class="bi bi-envelope"></i> Email Status</th>
+                        <th><i class="bi bi-gear"></i> Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var invoice in Invoices)
+                    @foreach (var invoice in pagedInvoices)
                     {
                         <tr>
                             <td>@(invoice.Client?.Name ?? "Unknown")</td>
@@ -65,22 +98,49 @@
                                 </span>
                             </td>
                             <td class="nowrap">
-                                <button class="btn btn-sm btn-primary me-2" @onclick="() => DownloadInvoice(invoice.ClientId)">Download</button>
-                                <button class="btn btn-sm btn-success me-2" @onclick="() => ShowSendEmailModal(invoice.ClientId, invoice.Client?.Name)">Send Email</button>
-                                <button class="btn btn-sm btn-warning me-2" @onclick="() => ShowMarkAsPaidModal(invoice.InvoiceId, invoice.Client?.Name)" disabled="@invoice.IsPaid">Mark as Paid</button>
-                                <button class="btn btn-sm btn-danger" @onclick="() => ShowDeleteInvoiceModal(invoice.InvoiceId, invoice.Client?.Name)">Delete</button>
+                                <button class="btn btn-sm btn-primary me-2" @onclick="() => DownloadInvoice(invoice.ClientId)">
+                                    <i class="bi bi-download me-1"></i> Download
+                                </button>
+                                <button class="btn btn-sm btn-success me-2" @onclick="() => ShowSendEmailModal(invoice.ClientId, invoice.Client?.Name)">
+                                    <i class="bi bi-envelope me-1"></i> Send Email
+                                </button>
+                                <button class="btn btn-sm btn-warning me-2" @onclick="() => ShowMarkAsPaidModal(invoice.InvoiceId, invoice.Client?.Name)" disabled="@invoice.IsPaid">
+                                    <i class="bi bi-cash-stack me-1"></i> Mark as Paid
+                                </button>
+                                <button class="btn btn-sm btn-danger" @onclick="() => ShowDeleteInvoiceModal(invoice.InvoiceId, invoice.Client?.Name)">
+                                    <i class="bi bi-trash me-1"></i> Delete
+                                </button>
                             </td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
+
+        <!-- Pagination Controls -->
+        <nav aria-label="Invoice pagination" class="mt-3">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(CanGoPrevious ? "" : "disabled")">
+                    <a class="page-link" href="javascript:void(0);" @onclick="PreviousPage">«</a>
+                </li>
+                @for (int i = 1; i <= TotalPages; i++)
+                {
+                    <li class="page-item @(i == CurrentPage ? "active" : "")">
+                        <a class="page-link fw-bold" href="javascript:void(0);" @onclick="() => GoToPage(i)">@i</a>
+                    </li>
+                }
+                <li class="page-item @(CanGoNext ? "" : "disabled")">
+                    <a class="page-link" href="javascript:void(0);" @onclick="NextPage">»</a>
+                </li>
+            </ul>
+        </nav>
     }
     else
     {
         <p class="text-center text-muted">No invoices found.</p>
     }
 </div>
+
 <!-- Send Email Confirmation Modal -->
 @if (isSendEmailModalVisible)
 {
@@ -88,8 +148,12 @@
         <div class="delete-modal">
             <p class="fw-bold">Are you sure you want to send an email to <span class="text-primary">@modalClientName</span>?</p>
             <div class="d-flex justify-content-center gap-3">
-                <button class="btn btn-success" @onclick="ConfirmSendEmail">Yes, Send</button>
-                <button class="btn btn-secondary" @onclick="CancelSendEmail">Cancel</button>
+                <button class="btn btn-success" @onclick="ConfirmSendEmail">
+                    <i class="bi bi-envelope-check me-1"></i> Yes, Send
+                </button>
+                <button class="btn btn-secondary" @onclick="CancelSendEmail">
+                    <i class="bi bi-x-circle me-1"></i> Cancel
+                </button>
             </div>
         </div>
     </div>
@@ -102,8 +166,12 @@
         <div class="delete-modal">
             <p class="fw-bold">Mark invoice for <span class="text-success">@modalClientName</span> as Paid?</p>
             <div class="d-flex justify-content-center gap-3">
-                <button class="btn btn-warning" @onclick="ConfirmMarkAsPaid">Yes, Mark as Paid</button>
-                <button class="btn btn-secondary" @onclick="CancelMarkAsPaid">Cancel</button>
+                <button class="btn btn-warning" @onclick="ConfirmMarkAsPaid">
+                    <i class="bi bi-cash-stack me-1"></i> Yes, Mark as Paid
+                </button>
+                <button class="btn btn-secondary" @onclick="CancelMarkAsPaid">
+                    <i class="bi bi-x-circle me-1"></i> Cancel
+                </button>
             </div>
         </div>
     </div>
@@ -116,14 +184,37 @@
         <div class="delete-modal">
             <p class="fw-bold">Are you sure you want to delete the invoice for <span class="text-danger">@modalClientName</span>?</p>
             <div class="d-flex justify-content-center gap-3">
-                <button class="btn btn-danger" @onclick="ConfirmDeleteInvoice">Yes, Delete</button>
-                <button class="btn btn-secondary" @onclick="CancelDeleteInvoice">Cancel</button>
+                <button class="btn btn-danger" @onclick="ConfirmDeleteInvoice">
+                    <i class="bi bi-trash me-1"></i> Yes, Delete
+                </button>
+                <button class="btn btn-secondary" @onclick="CancelDeleteInvoice">
+                    <i class="bi bi-x-circle me-1"></i> Cancel
+                </button>
             </div>
         </div>
     </div>
 }
 
 <style>
+    .container {
+        max-width: 1200px;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+        min-width: 100%;
+        display: block;
+        white-space: nowrap;
+    }
+
+    th, td {
+        min-width: 150px;
+    }
+
+        td.nowrap {
+            white-space: nowrap;
+        }
+
     .modal-overlay {
         position: fixed;
         top: 0;
@@ -136,6 +227,7 @@
         background: rgba(0, 0, 0, 0.4);
         z-index: 1050;
     }
+
     .delete-modal {
         background: white;
         padding: 20px;
@@ -144,39 +236,30 @@
         text-align: center;
         max-width: 400px;
     }
-    /* Center Align Table Data */
+
+    .btn-sm {
+        min-width: 70px;
+    }
+
     tbody td {
         text-align: center;
         vertical-align: middle;
     }
 
-    /* Keep Headers Left-Aligned */
     thead th {
         text-align: center;
     }
-    /* Table Wrapper */
-    .table-responsive {
-        overflow-x: auto;
-        min-width: 100%;
-        display: block;
-        white-space: nowrap;
-    }
-
-    /* Table Styling */
-    th, td {
-        min-width: 150px;
-    }
-
-        td.nowrap {
-            white-space: nowrap;
-        }
 </style>
 
 @code {
     private List<Client> Clients = new();
     private List<Invoice> Invoices = new();
+    private List<Invoice> filteredInvoices = new();
+    private List<Invoice> pagedInvoices = new();
     private int SelectedClientId;
-
+    private List<Invoice> AllInvoices = new();
+    private string SelectedStatus = "";
+    private string SelectedEmailStatus = "";
     // Modal control fields
     private bool isSendEmailModalVisible = false;
     private bool isMarkAsPaidModalVisible = false;
@@ -185,12 +268,24 @@
     private int modalClientId;
     private string modalClientName;
 
+    private int CurrentPage = 1;
+    private int PageSize = 5;
+    private int totalInvoices => filteredInvoices.Count;
+    private int TotalPages => (int)Math.Ceiling((double)totalInvoices / PageSize);
+    private bool CanGoPrevious => CurrentPage > 1;
+    private bool CanGoNext => CurrentPage < TotalPages;
+    private string searchQuery = "";
+
     protected override async Task OnInitializedAsync()
     {
         try
         {
             Clients = (await ClientRepo.GetAllAsync(true)).ToList();
             Invoices = (await InvoiceService.GetAllInvoicesAsync()).ToList();
+            Clients = (await ClientRepo.GetAllAsync(true)).ToList();
+            AllInvoices = (await InvoiceService.GetAllInvoicesAsync()).ToList();
+            Invoices = new List<Invoice>(AllInvoices);
+            FilterInvoices();
         }
         catch (Exception ex)
         {
@@ -223,9 +318,10 @@
                 await InvoiceService.CreateInvoiceAsync(SelectedClientId);
                 Console.WriteLine("New invoice generated.");
             }
-            
+
             // Refresh the invoice list
             Invoices = (await InvoiceService.GetAllInvoicesAsync()).ToList();
+            FilterInvoices();
         }
         catch (Exception ex)
         {
@@ -271,6 +367,7 @@
             bool emailSent = await InvoiceService.SendInvoiceToClientAsync(modalClientId);
             Console.WriteLine(emailSent ? "Invoice email sent." : "Failed to send invoice email.");
             Invoices = (await InvoiceService.GetAllInvoicesAsync()).ToList();
+            FilterInvoices();
         }
         catch (Exception ex)
         {
@@ -300,6 +397,7 @@
         {
             await InvoiceService.MarkInvoiceAsPaidAsync(modalInvoiceId);
             Invoices = (await InvoiceService.GetAllInvoicesAsync()).ToList();
+            FilterInvoices();
         }
         catch (Exception ex)
         {
@@ -329,6 +427,7 @@
         {
             await InvoiceService.DeleteInvoiceAsync(modalInvoiceId);
             Invoices = (await InvoiceService.GetAllInvoicesAsync()).ToList();
+            FilterInvoices();
         }
         catch (Exception ex)
         {
@@ -339,4 +438,66 @@
             isDeleteInvoiceModalVisible = false;
         }
     }
+
+    private void LoadPagedInvoices()
+    {
+        pagedInvoices = filteredInvoices.Skip((CurrentPage - 1) * PageSize).Take(PageSize).ToList();
+    }
+
+    private void FilterInvoices()
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            filteredInvoices = new List<Invoice>(Invoices);
+        }
+        else
+        {
+            filteredInvoices = Invoices
+                .Where(i => (i.Client?.Name?.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                            i.InvoiceDate.ToShortDateString().Contains(searchQuery))
+                .ToList();
+        }
+        CurrentPage = 1;
+        LoadPagedInvoices();
+    }
+
+    private void NextPage() { if (CanGoNext) { CurrentPage++; LoadPagedInvoices(); } }
+    private void PreviousPage() { if (CanGoPrevious) { CurrentPage--; LoadPagedInvoices(); } }
+    private void GoToPage(int page) { if (page >= 1 && page <= TotalPages) { CurrentPage = page; LoadPagedInvoices(); } }
+
+    private int TotalInvoices => filteredInvoices.Count;
+    // private int TotalPages => (int)Math.Ceiling((double)TotalInvoices / PageSize);
+    // private bool CanGoPrevious => CurrentPage > 1;
+    // private bool CanGoNext => CurrentPage < TotalPages;
+
+
+
+    private async Task GetInvoiceByStatus(ChangeEventArgs e)
+    {
+        SelectedStatus = e.Value?.ToString();
+        ApplyFilters();
+    }
+
+    private async Task GetInvoiceByEmailStatus(ChangeEventArgs e)
+    {
+        SelectedEmailStatus = e.Value?.ToString();
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        bool? statusFilter = null;
+        if (!string.IsNullOrEmpty(SelectedStatus) && bool.TryParse(SelectedStatus, out bool parsedStatus))
+        {
+            statusFilter = parsedStatus;
+        }
+
+        Invoices = AllInvoices
+            .Where(i => (!statusFilter.HasValue || i.IsPaid == statusFilter.Value) &&
+                        (string.IsNullOrEmpty(SelectedEmailStatus) || i.EmailStatus == SelectedEmailStatus))
+            .ToList();
+
+        FilterInvoices();
+    }
+
 }

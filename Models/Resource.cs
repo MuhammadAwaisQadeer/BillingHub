@@ -22,15 +22,19 @@ namespace Client_Invoice_System.Models
 
         public bool IsActive { get; set; } = true;
 
-        // New property: tracks if this resource has already been invoiced.
-        public bool IsInvoiced { get; set; }
+        public bool IsInvoiced { get; set; }  // ✅ Tracks if this resource has been invoiced
+
+        // ✅ New: Link to Invoice
+        public int? InvoiceId { get; set; }  // Nullable because resources may exist before an invoice is created
+        [ForeignKey("InvoiceId")]
+        public virtual Invoice Invoice { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
         public DateTime? UpdatedAt { get; set; }
 
         // Navigation Properties
         public virtual Client Client { get; set; }
         public virtual Employee Employee { get; set; }
     }
+
 }

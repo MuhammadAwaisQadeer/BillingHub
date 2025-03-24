@@ -11,23 +11,38 @@ namespace Client_Invoice_System.Repository
 {
     public class ClientRepository : GenericRepository<Client>
     {
-        public ClientRepository(ApplicationDbContext context) : base(context) { }
+        public ClientRepository(IDbContextFactory<ApplicationDbContext> contextFactory)
+           : base(contextFactory) { }
 
         public async Task<List<Client>> GetAllClientsWithDetailsAsync()
         {
-            return await _context.Clients.Include(c => c.CountryCurrency).AsNoTracking().ToListAsync();
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Clients
+                .Include(c => c.CountryCurrency)
+                .AsNoTracking()
+                .ToListAsync();
         }
 
         public async Task<int> GetActiveClientsCountAsync()
         {
-            return await _context.Clients.CountAsync();
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+                return await context.Clients.CountAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching active clients count: {ex.Message}");
+                return 0;
+            }
         }
 
         public async Task<int> GetTotalEmployeesAsync()
         {
             try
             {
-                return await _context.Employees.CountAsync();
+                using var context = _contextFactory.CreateDbContext();
+                return await context.Employees.CountAsync();
             }
             catch (Exception ex)
             {
@@ -40,7 +55,8 @@ namespace Client_Invoice_System.Repository
         {
             try
             {
-                return await _context.Resources.CountAsync(c => c.IsActive);
+                using var context = _contextFactory.CreateDbContext();
+                return await context.Resources.CountAsync(r => r.IsActive);
             }
             catch (Exception ex)
             {
@@ -53,7 +69,8 @@ namespace Client_Invoice_System.Repository
         {
             try
             {
-                return await _dbSet.AnyAsync(c => c.Email == email);
+                using var context = _contextFactory.CreateDbContext();
+                return await context.Clients.AnyAsync(c => c.Email == email);
             }
             catch (Exception ex)
             {
@@ -66,7 +83,8 @@ namespace Client_Invoice_System.Repository
         {
             try
             {
-                return await _dbSet
+                using var context = _contextFactory.CreateDbContext();
+                return await context.Clients
                     .Include(c => c.Resources)
                     .FirstOrDefaultAsync(c => c.ClientId == clientId);
             }
@@ -76,13 +94,15 @@ namespace Client_Invoice_System.Repository
                 return null;
             }
         }
+
         public async Task<List<Employee>> GetEmployeesByClientIdAsync(int clientId)
         {
             try
             {
-                return await _context.Resources
+                using var context = _contextFactory.CreateDbContext();
+                return await context.Resources
                     .Where(r => r.ClientId == clientId)
-                    .Select(r => r.Employee)  // Get associated employees
+                    .Select(r => r.Employee)
                     .Distinct()
                     .ToListAsync();
             }
@@ -97,15 +117,15 @@ namespace Client_Invoice_System.Repository
         {
             try
             {
-                var client = await _dbSet.FindAsync(clientId);
+                using var context = _contextFactory.CreateDbContext();
+                var client = await context.Clients.FindAsync(clientId);
                 if (client == null)
                 {
                     Console.WriteLine($"Client with ID {clientId} not found.");
                     return;
                 }
-
-                _dbSet.Remove(client);
-                await _context.SaveChangesAsync();
+                context.Clients.Remove(client);
+                await context.SaveChangesAsync();
             }
             catch (Exception ex)
             {
@@ -113,11 +133,12 @@ namespace Client_Invoice_System.Repository
             }
         }
 
-        public async Task<Client> GetByIdAsync(int clientId)
+        public async Task<Client?> GetByIdAsync(int clientId)
         {
             try
             {
-                return await _dbSet.FindAsync(clientId);
+                using var context = _contextFactory.CreateDbContext();
+                return await context.Clients.FindAsync(clientId);
             }
             catch (Exception ex)
             {
@@ -130,8 +151,9 @@ namespace Client_Invoice_System.Repository
         {
             try
             {
-                await _dbSet.AddAsync(client);
-                await _context.SaveChangesAsync();
+                using var context = _contextFactory.CreateDbContext();
+                await context.Clients.AddAsync(client);
+                await context.SaveChangesAsync();
             }
             catch (Exception ex)
             {
@@ -143,8 +165,9 @@ namespace Client_Invoice_System.Repository
         {
             try
             {
-                _dbSet.Update(client);
-                await _context.SaveChangesAsync();
+                using var context = _contextFactory.CreateDbContext();
+                context.Clients.Update(client);
+                await context.SaveChangesAsync();
             }
             catch (Exception ex)
             {

@@ -6,15 +6,24 @@
 @inject ClientRepository ClientRepo
 @inject NavigationManager Navigation
 @using Client_Invoice_System.Components
-<Breadcrumb />
 
+<div class="d-flex align-items-center">
+    <Breadcrumb />
+</div>
 <div class="">
-    <div class="row mb-3">
-        <div class="col-12 col-md-6">
-            <h3>Clients (@(clients?.Count ?? 0))</h3>
+    <div class="col-12 col-md-6">
+        <h3>Clients (@(filteredClients?.Count ?? 0))</h3>
+    </div>
+
+    <div class="row mb-3 mt-5">
+        <div class="col-md-6">
+            <div class="input-group shadow rounded" style="max-width: 300px;">
+                <input type="text" class="form-control form-control-sm border-primary rounded-start" placeholder="🔍 Search..." @bind="searchQuery" @oninput="FilterClients">
+                <button class="btn btn-primary fw-bold px-3" @onclick="FilterClients"><i class="bi bi-search"></i></button>
+            </div>
         </div>
-        <div class="col-md-6 d-flex justify-content-end">
-            <button class="btn btn-primary w-30 w-md-auto" @onclick="AddClient">Add New Client</button>
+        <div class="col-md-6 text-end">
+            <button class="btn btn-primary fw-bold px-4 py-2 shadow-lg rounded" @onclick="AddClient"><i class="bi bi-plus-circle me-1"></i> Add Client</button>
         </div>
     </div>
 
@@ -23,23 +32,23 @@
             <div class="card p-3 shadow-lg rounded-4 bg-white">
                 <p id="noResults" class="text-center text-danger d-none">No matching records found.</p>
                 <div class="table-responsive">
-                    <table id="clientTable" class="table table-striped">
-                        <thead class="">
+                    <table class="table table-striped">
+                        <thead>
                             <tr>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Address</th>
-                                <th>Phone</th>
-                                <th>Country</th>
-                                <th>Currency</th>
-                                <th>Client ID</th>
-                                <th>Actions</th>
+                                <th><i class="bi bi-person"></i> Name</th>
+                                <th><i class="bi bi-envelope"></i> Email</th>
+                                <th><i class="bi bi-geo-alt"></i> Address</th>
+                                <th><i class="bi bi-telephone"></i> Phone</th>
+                                <th><i class="bi bi-globe"></i> Country</th>
+                                <th><i class="bi bi-currency-exchange"></i> Currency</th>
+                                <th><i class="bi bi-hash"></i> Client ID</th>
+                                <th><i class="bi bi-tools"></i> Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @if (clients != null && clients.Any())
+                            @if (pagedClients != null && pagedClients.Any())
                             {
-                                @foreach (var client in clients)
+                                @foreach (var client in pagedClients)
                                 {
                                     <tr>
                                         <td>@client.Name</td>
@@ -55,8 +64,12 @@
                                         </td>
                                         <td>@client.ClientIdentifier</td>
                                         <td>
-                                            <button class="btn btn-sm btn-warning me-2" @onclick="() => EditClient(client.ClientId)">Edit</button>
-                                            <button class="btn btn-sm btn-danger" @onclick="() => ShowDeleteModal(client.ClientId, client.Name)">Delete</button>
+                                            <button class="btn btn-sm btn-warning me-2" @onclick="() => EditClient(client.ClientId)">
+                                                <i class="bi bi-pencil-square"></i> Edit
+                                            </button>
+                                            <button class="btn btn-sm btn-danger" @onclick="() => ShowDeleteModal(client.ClientId, client.Name)">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
                                         </td>
                                     </tr>
                                 }
@@ -71,85 +84,51 @@
                     </table>
                 </div>
 
+                <!-- Pagination -->
+                <nav aria-label="Client pagination" class="mt-3">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item @(CanGoPrevious ? "" : "disabled")">
+                            <a class="page-link shadow-sm" href="javascript:void(0);" @onclick="PreviousPage">«</a>
+                        </li>
+
+                        @for (int i = 1; i <= totalPages; i++)
+                        {
+                            <li class="page-item @(i == currentPage ? "active" : "")">
+                                <a class="page-link fw-bold shadow-sm" href="javascript:void(0);" @onclick="() => GoToPage(i)">@i</a>
+                            </li>
+                        }
+
+                        <li class="page-item @(CanGoNext ? "" : "disabled")">
+                            <a class="page-link shadow-sm" href="javascript:void(0);" @onclick="NextPage">»</a>
+                        </li>
+                    </ul>
+                </nav>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
-@if (isDeleteModalVisible)
-{
-    <div class="modal-overlay">
-        <div class="delete-modal">
-            <p class="fw-bold">Are you sure you want to delete <span class="text-danger">@clientToDeleteName</span>?</p>
-            <div class="d-flex flex-column flex-md-row justify-content-center gap-3">
-                <button class="btn btn-danger w-100 w-md-auto" @onclick="ConfirmDelete">Yes, Delete</button>
-                <button class="btn btn-secondary w-100 w-md-auto" @onclick="CancelDelete">Cancel</button>
-            </div>
-        </div>
-    </div>
-}
-
-<style>
-    .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 1050;
-    }
-
-    .delete-modal {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-        text-align: center;
-        max-width: 90%;
-        width: 400px;
-    }
-
-    .table-responsive {
-        overflow-x: auto;
-        min-width: 100%;
-        display: block;
-        white-space: nowrap;
-    }
-
-    td:last-child {
-        white-space: nowrap; /* Prevent button wrapping */
-    }
-
-    tbody td {
-        text-align: center;
-        vertical-align: middle;
-    }
-
-    /* Keep Headers Left-Aligned */
-    thead th {
-        text-align: center;
-    }
-    .btn-sm {
-        min-width: 70px; /* Ensure buttons have equal width */
-    }
-</style>
-
 @code {
-    private List<Client> clients;
+    private List<Client> clients = new();
+    private List<Client> filteredClients = new();
+    private List<Client> pagedClients = new();
     private bool isDeleteModalVisible = false;
     private int clientToDeleteId;
     private string clientToDeleteName;
+    private int currentPage = 1;
+    private int pageSize = 5;
+    private int totalClients;
+    private int totalPages => (int)Math.Ceiling((double)totalClients / pageSize);
+    private bool CanGoPrevious => currentPage > 1;
+    private bool CanGoNext => currentPage < totalPages;
+    private string searchQuery = "";
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
             clients = (await ClientRepo.GetAllAsync(true)).ToList();
+            FilterClients();
         }
         catch (Exception ex)
         {
@@ -179,12 +158,52 @@
         isDeleteModalVisible = false;
     }
 
+    private void LoadPagedClients()
+    {
+        pagedClients = filteredClients.Skip((currentPage - 1) * pageSize).Take(pageSize).ToList();
+    }
+
+    private void FilterClients()
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            filteredClients = new List<Client>(clients);
+        }
+        else
+        {
+            filteredClients = clients
+                .Where(c => c.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                            c.Email.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                            c.Address.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                            c.PhoneNumber.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        totalClients = filteredClients.Count;
+        currentPage = 1;
+        LoadPagedClients();
+    }
+
+    private void NextPage() => ChangePage(currentPage + 1);
+    private void PreviousPage() => ChangePage(currentPage - 1);
+    private void GoToPage(int page) => ChangePage(page);
+
+    private void ChangePage(int page)
+    {
+        if (page >= 1 && page <= totalPages)
+        {
+            currentPage = page;
+            LoadPagedClients();
+        }
+    }
+
     private async Task ConfirmDelete()
     {
         try
         {
             await ClientRepo.DeleteAsync(clientToDeleteId);
             clients = (await ClientRepo.GetAllAsync(true)).ToList();
+            FilterClients();
             isDeleteModalVisible = false;
         }
         catch (Exception ex)

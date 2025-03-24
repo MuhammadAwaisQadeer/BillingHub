@@ -28,5 +28,9 @@ namespace Client_Invoice_System.Models
 
         public string EmailStatus { get; set; } = "Not Sent";
         public bool IsPaid { get; set; } = false;
+
+        // ✅ New: Link to Resources
+        public virtual ICollection<Resource> Resources { get; set; } = new List<Resource>();
     }
+
 }

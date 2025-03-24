@@ -1,4 +1,5 @@
-﻿@page "/add-edit-resource/{ResourceId:int?}"
+﻿@page "/add-resource"
+@page "/edit-resource/{ResourceId:int}"
 @rendermode InteractiveServer
 @using Client_Invoice_System.Models
 @using Client_Invoice_System.Repository
@@ -6,16 +7,17 @@
 @inject ResourceRepository ResourceRepository
 @inject EmployeeRepository EmployeeRepository
 @inject ClientRepository ClientRepository
-@* <Breadcrumb /> *@
-
-<h3 class="text-primary text-center">@(ResourceId == null ? "Add Contracts" : "Edit Contracts")</h3>
+<div class="d-flex align-items-center">
+    <Breadcrumb />
+</div>
 
 <EditForm Model="EditingResource" OnValidSubmit="SaveResource">
     <DataAnnotationsValidator />
-    <ValidationSummary />
 
     <div class="d-flex justify-content-center">
         <div class="card shadow p-4" style="max-width: 500px; width: 100%;">
+            <h3 class="text-center text-primary mb-4">@(ResourceId == null ? "Add Contracts" : "Edit Contracts")</h3>
+
             <div class="mb-3">
                 <label class="form-label fw-bold">Client</label>
                 <InputSelect class="form-control" @bind-Value="EditingResource.ClientId">
@@ -29,7 +31,8 @@
 
             <div class="mb-3">
                 <label class="form-label fw-bold">Resource Name</label>
-                <InputText class="form-control" @bind-Value="EditingResource.ResourceName" required />
+                <InputText class="form-control" @bind-Value="EditingResource.ResourceName"  />
+                <ValidationMessage For="@(() => EditingResource.ResourceName)" class="text-danger" />
             </div>
 
             <div class="mb-3">
@@ -45,15 +48,29 @@
 
             <div class="mb-3">
                 <label class="form-label fw-bold">Consumed Hours</label>
-                <InputNumber class="form-control" @bind-Value="EditingResource.ConsumedTotalHours" step="0.01" required />
+                <InputNumber class="form-control" @bind-Value="EditingResource.ConsumedTotalHours" step="0.01"  />
+                <ValidationMessage For="@(() => EditingResource.ConsumedTotalHours)" class="text-danger" />
             </div>
 
-           
+
 
             <div class="d-flex justify-content-end gap-2">
-                <button type="submit" class="btn btn-primary">@(EditingResource.ResourceId == 0 ? "Add" : "Update") Resource</button>
-                <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    @if (EditingResource.ResourceId == 0)
+                    {
+                        <text><i class="bi bi-plus-circle me-1"></i>Add Contract</text>
+                    }
+                    else
+                    {
+                        <text><i class="bi bi-pencil-square me-1"></i>Update Contract</text>
+                    }
+                </button>
+                <button type="button" class="btn btn-secondary" @onclick="Cancel">
+                    <i class="bi bi-x-circle me-1"></i>Cancel
+                </button>
             </div>
+
+
         </div>
     </div>
 </EditForm>

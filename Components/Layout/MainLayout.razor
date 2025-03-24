@@ -1,23 +1,76 @@
 ﻿@inherits LayoutComponentBase
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavigationManager
+@using Microsoft.AspNetCore.Components.Authorization
+@using Client_Invoice_System.Components.Account.Pages
+@using Client_Invoice_System.Components.Layout
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+<AuthorizeView>
+    <Authorized>
+        <div class="page">
+            <div class="sidebar">
+                <NavMenu />
+            </div>
 
-    <main>
-        <div class="top-row px-4">
-            @* <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a> *@
+            <main>
+                <div class="top-row px-4 d-flex justify-content-between align-items-center">
+                    <!-- You can add additional top-row items here if needed -->
+                    <div></div>
+                    <div class="dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle text-primary me-2" style="font-size:1.5rem;"></i>
+                            <span class="fw-bold text-dark">@context.User.Identity?.Name</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li>
+                                <NavLink class="dropdown-item" href="Account/Manage">
+                                    <i class="bi bi-gear text-success me-1"></i> Manage Account
+                                </NavLink>
+                            </li>
+                            <li>
+                                <hr class="dropdown-divider" />
+                            </li>
+                            <li>
+                                <form action="Account/Logout" method="post" class="px-3">
+                                    <AntiforgeryToken />
+                                    <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                                    <button type="submit" class="dropdown-item">
+                                        <i class="bi bi-box-arrow-right text-danger me-1"></i> Logout
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <article class="content px-4 mt-1">
+                    @Body
+                </article>
+            </main>
         </div>
+    </Authorized>
+    <NotAuthorized>
+        <Login />
+    </NotAuthorized>
+</AuthorizeView>
 
-        <article class="content px-4 mt-1">
-            @Body
-        </article>
-    </main>
-</div>
+@code {
+    private string? currentUrl;
 
-<div id="blazor-error-ui">
-    An unhandled error has occurred.
-    <a href="" class="reload">Reload</a>
-    <a class="dismiss">🗙</a>
-</div>
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+}

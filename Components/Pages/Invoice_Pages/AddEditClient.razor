@@ -7,41 +7,48 @@
 @inject ClientRepository ClientRepo
 @inject NavigationManager Navigation
 @inject CountryCurrencyRepository CountryCurrencyRepository
-@* <Breadcrumb /> *@
+
+<div class="d-flex align-items-center">
+    <Breadcrumb />
+</div>
 
 
-<div class="container-fluid d-flex justify-content-center align-items-center vh-100">
-    <div class="card shadow-lg p-4 rounded w-100" style="max-width: 650px;">
-        <h3 class="text-center text-primary mb-4">@(ClientId == 0 ? "Add Client" : "Edit Client")</h3>
-        <EditForm Model="client" OnValidSubmit="SaveClient">
-            <DataAnnotationsValidator />
-            <ValidationSummary />
-
-            <!-- Name & Email -->
+<EditForm Model="client" OnValidSubmit="SaveClient">
+    <DataAnnotationsValidator />
+    <div class="d-flex justify-content-center">
+        <div class="card shadow p-4 w-100" style="max-width: 650px;">
+            <h3 class="text-center text-primary mb-4">
+                @(ClientId == 0 ? "Add Client" : "Edit Client")
+            </h3>
+            <!-- Row 1: Name & Email -->
             <div class="row">
                 <div class="col-12 col-md-6 mb-3">
                     <label class="form-label">Name:</label>
                     <InputText class="form-control" @bind-Value="client.Name" />
+                    <ValidationMessage For="@(() => client.Name)" class="text-danger" />
                 </div>
                 <div class="col-12 col-md-6 mb-3">
                     <label class="form-label">Email:</label>
                     <InputText class="form-control" type="email" @bind-Value="client.Email" />
+                    <ValidationMessage For="@(() => client.Email)" class="text-danger" />
                 </div>
             </div>
 
-            <!-- Address & Phone Number -->
+            <!-- Row 2: Address & Phone Number -->
             <div class="row">
                 <div class="col-12 col-md-6 mb-3">
                     <label class="form-label">Address:</label>
                     <InputText class="form-control" @bind-Value="client.Address" />
+                    <ValidationMessage For="@(() => client.Address)" class="text-danger" />
                 </div>
                 <div class="col-12 col-md-6 mb-3">
                     <label class="form-label">Phone Number:</label>
                     <InputText class="form-control" @bind-Value="client.PhoneNumber" />
+                    <ValidationMessage For="@(() => client.PhoneNumber)" class="text-danger" />
                 </div>
             </div>
 
-            <!-- Country & Currency -->
+            <!-- Row 3: Country & Currency -->
             <div class="row">
                 <div class="col-12 col-md-6 mb-3">
                     <label class="form-label">Country</label>
@@ -49,7 +56,9 @@
                         <option value="">Select Country</option>
                         @foreach (var item in CountryCurrencyList)
                         {
-                            <option value="@item.Id" selected="@(item.Id == client.CountryCurrencyId)"> @($"{item.CountryName} ({item.CurrencyCode} - {item.Symbol})") </option>
+                            <option value="@item.Id" selected="@(item.Id == client.CountryCurrencyId)">
+                                @($"{item.CountryName} ({item.CurrencyCode} - {item.Symbol})")
+                            </option>
                         }
                     </select>
                 </div>
@@ -59,7 +68,7 @@
                 </div>
             </div>
 
-            <!-- Custom Currency & Client Identifier -->
+            <!-- Row 4: Custom Currency & Client Identifier -->
             <div class="row">
                 <div class="col-12 col-md-6 mb-3">
                     <label class="form-label">Custom Currency (Optional)</label>
@@ -67,19 +76,35 @@
                 </div>
                 <div class="col-12 col-md-6 mb-3">
                     <label class="form-label">Client Identifier:</label>
-                    <InputText class="form-control" @bind-Value="client.ClientIdentifier" maxlength="3" />
+                    <InputText class="form-control" @bind-Value="client.ClientIdentifier" maxlength="5" />
+                    <ValidationMessage For="@(() => client.ClientIdentifier)" class="text-danger" />
                 </div>
             </div>
 
-            <!-- Buttons with Flex-Wrap -->
-            <div class="d-flex justify-content-end gap-2 flex-wrap">
-                <button type="submit" class="btn btn-primary w-30 w-md-auto px-4 py-2">Save</button>
-                <button type="button" class="btn btn-secondary w-30 w-md-auto" @onclick="Cancel">Cancel</button>
+            <!-- Action Buttons -->
+            <div class="d-flex justify-content-end gap-2 flex-wrap mt-4">
+                <button type="button" class="btn btn-secondary me-3" @onclick="Cancel">
+                    <i class="bi bi-x-circle me-1"></i> Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    @if (ClientId == 0)
+                    {
+                        <text>
+                            <i class="bi bi-save me-1"></i> Save
+                        </text>
+                    }
+                    else
+                    {
+                        <text>
+                            <i class="bi bi-pencil-square me-1"></i> Update
+                        </text>
+                    }
+                </button>
             </div>
-
-        </EditForm>
+        </div>
     </div>
-</div>
+
+</EditForm>
 
 @code {
     [Parameter] public int ClientId { get; set; }

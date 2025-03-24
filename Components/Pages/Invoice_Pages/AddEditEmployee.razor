@@ -1,24 +1,29 @@
-﻿@page "/add-edit-employee/{EmployeeId:int?}"
+﻿@page "/add-employee"
+@page "/edit-employee/{EmployeeId:int?}"
 @rendermode InteractiveServer
 @using Client_Invoice_System.Models
 @using Client_Invoice_System.Repositories
 @using Client_Invoice_System.Repository
 @inject EmployeeRepository EmployeeRepository
 @inject NavigationManager Navigation
+<div class="d-flex align-items-center">
+    <Breadcrumb />
+</div>
 
-<h3 class="text-primary text-center mb-4">@(EmployeeId == null ? "Add Employee" : "Edit Employee")</h3>
 
 <EditForm Model="EditingEmployee" OnValidSubmit="SaveEmployee">
     <DataAnnotationsValidator />
-    <ValidationSummary />
 
     <div class="d-flex justify-content-center">
         <div class="card shadow p-4 w-100" style="max-width: 500px;">
+            <h3 class="text-center text-primary mb-4">@(EmployeeId == null ? "Add Employee" : "Edit Employee")</h3>
+
             <div class="row g-3">
                 <!-- Name Field -->
                 <div class="col-12">
                     <label class="form-label fw-bold">Name</label>
-                    <InputText class="form-control" @bind-Value="EditingEmployee.EmployeeName" required />
+                    <InputText class="form-control" @bind-Value="EditingEmployee.EmployeeName"  />
+                    <ValidationMessage For="@(() => EditingEmployee.EmployeeName)" class="text-danger" />
                 </div>
 
                 <!-- Designation Field -->
@@ -35,13 +40,18 @@
                 <!-- Hourly Rate Field -->
                 <div class="col-12">
                     <label class="form-label fw-bold">Hourly Rate</label>
-                    <InputNumber class="form-control" @bind-Value="EditingEmployee.HourlyRate" step="0.01" required />
+                    <InputNumber class="form-control" @bind-Value="EditingEmployee.HourlyRate" step="0.01"  />
+                    <ValidationMessage For="@(() => EditingEmployee.HourlyRate)" class="text-danger" />
                 </div>
 
                 <!-- Buttons -->
                 <div class="col-12 d-flex flex-column flex-md-row justify-content-md-end gap-2 mt-3">
-                    <button type="submit" class="btn btn-primary w-30 w-md-auto">Save Employee</button>
-                    <button type="button" class="btn btn-secondary w-30 w-md-auto" @onclick="Cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary w-30 w-md-auto">
+                        <i class="bi bi-save"></i>
+                        Save Employee
+                    </button>
+                    <button type="button" class="btn btn-secondary w-30 w-md-auto" @onclick="Cancel">
+                        <i class="bi bi-x-circle"></i>Cancel</button>
                 </div>
             </div>
         </div>

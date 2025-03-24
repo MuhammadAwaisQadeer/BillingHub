@@ -60,31 +60,15 @@ namespace Client_Invoice_System.Services
         }
 
         // Retrieves an existing unpaid invoice for the client.
-        public async Task<Invoice> GetUnpaidInvoiceForClientAsync(int clientId)
-        {
-            // Retrieves the first unpaid invoice for the client.
-            return await _context.Invoices.FirstOrDefaultAsync(i => i.ClientId == clientId && !i.IsPaid);
-        }
-
-
-        // Calculates the additional amount from resources that haven't been invoiced.
         public async Task<decimal> CalculateAdditionalAmountAsync(int clientId)
         {
             try
             {
-                var client = await _context.Clients
-                    .Where(c => c.ClientId == clientId)
-                    .Include(c => c.Resources)
-                    .ThenInclude(r => r.Employee)
-                    .FirstOrDefaultAsync();
+                var totalAmount = await _context.Resources
+                    .Where(r => r.ClientId == clientId && !r.IsInvoiced)
+                    .SumAsync(r => r.ConsumedTotalHours * r.Employee.HourlyRate);
 
-                if (client == null)
-                    throw new Exception("Client not found");
-
-                // Only include resources not yet invoiced.
-                return client.Resources
-                    .Where(r => !r.IsInvoiced)
-                    .Sum(r => r.ConsumedTotalHours * r.Employee.HourlyRate);
+                return totalAmount;
             }
             catch (Exception ex)
             {
@@ -93,7 +77,7 @@ namespace Client_Invoice_System.Services
             }
         }
 
-        // Updates an existing invoice.
+        // ✅ Updates an existing invoice.
         public async Task UpdateInvoiceAsync(Invoice invoice)
         {
             try
@@ -109,39 +93,52 @@ namespace Client_Invoice_System.Services
             }
         }
 
+        // ✅ Fetches an unpaid invoice for a client.
+        public async Task<Invoice?> GetUnpaidInvoiceForClientAsync(int clientId)
+        {
+            return await _context.Invoices
+                .Where(i => i.ClientId == clientId && !i.IsPaid)
+                .OrderByDescending(i => i.InvoiceDate)
+                .FirstOrDefaultAsync();
+        }
+
+        // ✅ Creates a new invoice.
         public async Task<int> CreateInvoiceAsync(int clientId)
         {
             try
             {
                 var client = await _context.Clients
-                    .Where(c => c.ClientId == clientId)
                     .Include(c => c.Resources)
                     .ThenInclude(r => r.Employee)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefaultAsync(c => c.ClientId == clientId);
 
                 if (client == null)
                     throw new Exception("Client not found!");
 
-                // Sum only the resources that haven't been invoiced.
                 var newResources = client.Resources.Where(r => !r.IsInvoiced).ToList();
                 decimal totalAmount = newResources.Sum(r => r.ConsumedTotalHours * r.Employee.HourlyRate);
+
+                //if (totalAmount == 0)
+                //{
+                //    Console.WriteLine($"⚠️ No new resources to invoice for Client {clientId}.");
+                //    return 0;
+                //}
 
                 var invoice = new Invoice
                 {
                     ClientId = clientId,
                     InvoiceDate = DateTime.UtcNow,
                     TotalAmount = totalAmount,
-                    CountryCurrencyId = client?.CountryCurrencyId ?? default,
+                    CountryCurrencyId = client.CountryCurrencyId,
                     IsPaid = false,
                     EmailStatus = "Not Sent"
                 };
 
                 await _context.Invoices.AddAsync(invoice);
-                // Mark these resources as invoiced.
-                foreach (var resource in newResources)
-                {
-                    resource.IsInvoiced = true;
-                }
+
+                // ✅ Mark resources as invoiced
+                newResources.ForEach(r => r.IsInvoiced = true);
+
                 await _context.SaveChangesAsync();
                 Console.WriteLine($"✅ Invoice {invoice.InvoiceId} created successfully with amount: {totalAmount:C}.");
                 return invoice.InvoiceId;
@@ -153,60 +150,73 @@ namespace Client_Invoice_System.Services
             }
         }
 
-        // Saves or updates an invoice for the client based on unpaid invoice existence.
         public async Task<int> SaveInvoiceAsync(int clientId)
         {
             try
             {
-                // 1. Retrieve the client with all resources and employee details.
                 var client = await _context.Clients
-                    .Where(c => c.ClientId == clientId)
                     .Include(c => c.Resources)
                     .ThenInclude(r => r.Employee)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefaultAsync(c => c.ClientId == clientId);
 
                 if (client == null)
                     throw new Exception("Client not found!");
 
-                // 2. Filter out resources that have already been invoiced.
+                // ✅ Only fetch resources that have NOT been invoiced yet
                 var newResources = client.Resources.Where(r => !r.IsInvoiced).ToList();
                 decimal newAmount = newResources.Sum(r => r.ConsumedTotalHours * r.Employee.HourlyRate);
 
-                // 3. If there is no new resource consumption, return the existing unpaid invoice (if any).
                 if (newAmount == 0)
                 {
-                    Console.WriteLine("No new resources to invoice.");
-                    var existingInvoice = await GetUnpaidInvoiceForClientAsync(clientId);
-                    return existingInvoice?.InvoiceId ?? 0;
+                    Console.WriteLine($"⚠️ No new resources to invoice for Client {clientId}.");
+                    var unpaidInvoice = await GetUnpaidInvoiceForClientAsync(clientId);
+                    return unpaidInvoice?.InvoiceId ?? 0;
                 }
 
-                // 4. Check for an existing unpaid invoice.
-                var existingInvoiceUnpaid = await GetUnpaidInvoiceForClientAsync(clientId);
-                if (existingInvoiceUnpaid != null)
+                var existingUnpaidInvoice = await GetUnpaidInvoiceForClientAsync(clientId);
+
+                if (existingUnpaidInvoice != null && !existingUnpaidInvoice.IsPaid)
                 {
-                    // If the existing unpaid invoice is still unpaid, update it only with the amount from new resources.
-                    if (!existingInvoiceUnpaid.IsPaid)
+                    // ✅ Update existing invoice
+                    existingUnpaidInvoice.TotalAmount += newAmount;
+
+                    // ✅ Assign the existing invoice to these new resources
+                    newResources.ForEach(r =>
                     {
-                        existingInvoiceUnpaid.TotalAmount += newAmount;
-                        // Mark only the new resources as invoiced.
-                        foreach (var resource in newResources)
-                        {
-                            resource.IsInvoiced = true;
-                        }
-                        await _context.SaveChangesAsync();
-                        Console.WriteLine($"✅ Existing invoice {existingInvoiceUnpaid.InvoiceId} updated with additional amount: {newAmount:C}.");
-                        return existingInvoiceUnpaid.InvoiceId;
-                    }
-                    else
-                    {
-                        // If the existing invoice is already paid, create a new invoice.
-                        return await CreateInvoiceAsync(clientId);
-                    }
+                        r.IsInvoiced = true;
+                        r.InvoiceId = existingUnpaidInvoice.InvoiceId;
+                    });
+
+                    await _context.SaveChangesAsync();
+                    Console.WriteLine($"✅ Updated Invoice {existingUnpaidInvoice.InvoiceId} with {newAmount:C}.");
+                    return existingUnpaidInvoice.InvoiceId;
                 }
                 else
                 {
-                    // No existing unpaid invoice, so create a new one.
-                    return await CreateInvoiceAsync(clientId);
+                    // ✅ Create a new invoice if no unpaid invoice exists
+                    var newInvoice = new Invoice
+                    {
+                        ClientId = clientId,
+                        InvoiceDate = DateTime.UtcNow,
+                        TotalAmount = newAmount,
+                        CountryCurrencyId = client.CountryCurrencyId,
+                        IsPaid = false,
+                        EmailStatus = "Not Sent"
+                    };
+
+                    await _context.Invoices.AddAsync(newInvoice);
+                    await _context.SaveChangesAsync();
+
+                    // ✅ Assign new invoice ID to resources
+                    newResources.ForEach(r =>
+                    {
+                        r.IsInvoiced = true;
+                        r.InvoiceId = newInvoice.InvoiceId;
+                    });
+
+                    await _context.SaveChangesAsync();
+                    Console.WriteLine($"✅ Invoice {newInvoice.InvoiceId} created successfully with amount: {newAmount:C}.");
+                    return newInvoice.InvoiceId;
                 }
             }
             catch (Exception ex)
@@ -215,6 +225,8 @@ namespace Client_Invoice_System.Services
                 throw;
             }
         }
+
+
 
 
         // Sends an invoice email and updates the EmailStatus.
@@ -276,29 +288,48 @@ namespace Client_Invoice_System.Services
         {
             try
             {
+                // Load the client, including resources and related employee and country currency info
                 var client = await _context.Clients
                     .Where(c => c.ClientId == clientId)
                     .Include(c => c.Resources)
-                    .ThenInclude(r => r.Employee)
+                        .ThenInclude(r => r.Employee)
+                    .Include(c => c.CountryCurrency)
                     .FirstOrDefaultAsync();
 
                 if (client == null)
                     throw new Exception("Client not found!");
 
+                // Load the owner's payment profile
                 var paymentProfile = await _context.Owners.FirstOrDefaultAsync();
                 if (paymentProfile == null)
-                    throw new Exception("Owners Payment profile not found!");
-
-                decimal totalAmount = client.Resources
-                           .Where(r => !r.IsInvoiced)
-                           .Sum(r => r.ConsumedTotalHours * r.Employee.HourlyRate);
+                    throw new Exception("Owner's Payment profile not found!");
 
 
-                // Determine culture based on client's currency
-                // Fetch currency symbol from the client's associated CountryCurrency table
+                // ✅ Fetch only the unpaid invoice
+                // ✅ Fetch only the unpaid invoice along with its related data
+                // ✅ Fetch only unpaid invoices with necessary details
+                var unpaidInvoice = await _context.Invoices
+              .Where(i => i.ClientId == clientId && !i.IsPaid)
+              .Include(i => i.Resources)
+                  .ThenInclude(r => r.Employee)
+              .Include(i => i.CountryCurrency)
+              .Include(i => i.Client)
+              .OrderByDescending(i => i.InvoiceDate)
+              .FirstOrDefaultAsync();
+
+                if (unpaidInvoice == null)
+                    throw new Exception("No unpaid invoice found!");
+
+                // Use only the resources linked to this unpaid invoice
+                var resourcesForInvoice = unpaidInvoice.Resources.ToList();
+
+                // Total amount as stored in the invoice
+                decimal totalAmount = unpaidInvoice.TotalAmount;
+
+
+                // Determine culture and currency symbol
                 CultureInfo culture;
-                string currencySymbol = client?.CountryCurrency?.Symbol ?? "$"; // Default to USD symbol
-
+                string currencySymbol = client?.CountryCurrency?.Symbol ?? "$"; // Default USD symbol
                 if (!string.IsNullOrEmpty(client?.CountryCurrency?.CurrencyCode))
                 {
                     try
@@ -312,9 +343,8 @@ namespace Client_Invoice_System.Services
                 }
                 else
                 {
-                    culture = new CultureInfo("en-US"); // Default if currency is not set
+                    culture = new CultureInfo("en-US");
                 }
-
 
                 using (MemoryStream ms = new MemoryStream())
                 {
@@ -327,7 +357,7 @@ namespace Client_Invoice_System.Services
                             page.Size(PageSizes.A4);
                             page.Margin(30);
 
-                            // ---- HEADER ----
+                            // HEADER
                             page.Header().Table(table =>
                             {
                                 table.ColumnsDefinition(columns =>
@@ -344,11 +374,12 @@ namespace Client_Invoice_System.Services
                                 table.Cell().Border(1).Padding(2).AlignLeft().Text($"Invoice No: INV/{DateTime.Now.Year}/000{clientId}\nDate: {DateTime.Now:MM/dd/yyyy}").Bold();
                             });
 
+                            // CONTENT
                             page.Content().Column(col =>
                             {
                                 col.Item().PaddingTop(20);
 
-                                // ---- PAYMENT INSTRUCTIONS ----
+                                // Payment Instructions
                                 col.Item().Container().PaddingBottom(5).Text("Payment Instructions (Wire Transfer)").Bold();
                                 col.Item().Table(table =>
                                 {
@@ -375,10 +406,7 @@ namespace Client_Invoice_System.Services
 
                                 col.Item().PaddingTop(10);
 
-                                // ---- SERVICE DETAILS TABLE ----
-                                col.Item().Container().PaddingTop(5);
-
-                                col.Item().PaddingTop(5);
+                                // Resource Details Table
                                 col.Item().Table(table =>
                                 {
                                     table.ColumnsDefinition(columns =>
@@ -389,35 +417,38 @@ namespace Client_Invoice_System.Services
                                         columns.ConstantColumn(120);
                                     });
 
+                                    // Table Header
                                     table.Header(header =>
                                     {
                                         string headerColor = "#2F4F4F";
-
                                         header.Cell().Background(Color.FromHex(headerColor)).Padding(5)
                                             .Text(text => text.Span("Description").FontColor(Colors.White).Bold());
-
                                         header.Cell().Background(Color.FromHex(headerColor)).Padding(5)
                                             .Text(text => text.Span("Quantity").FontColor(Colors.White).Bold());
-
                                         header.Cell().Background(Color.FromHex(headerColor)).Padding(5)
                                             .Text(text => text.Span($"Rate ({currencySymbol})").FontColor(Colors.White).Bold());
-
                                         header.Cell().Background(Color.FromHex(headerColor)).Padding(5)
                                             .Text(text => text.Span($"Subtotal ({currencySymbol})").FontColor(Colors.White).Bold());
                                     });
 
-                                    foreach (var resource in client.Resources.Where(r => !r.IsInvoiced))
+                                    // Resource rows
+                                    foreach (var resource in resourcesForInvoice)
                                     {
-                                        table.Cell().ColumnSpan(4).Border(1).Padding(5).Text($"{resource.ResourceName} - {resource.Employee.Designation} - Monthly Contract - {DateTime.Now:MMMM yyyy}");
+                                        decimal subtotal = resource.ConsumedTotalHours * resource.Employee.HourlyRate;
 
-                                        table.Cell().ColumnSpan(1).Border(1).Padding(5).Text($"Calculation\nAmount in {currencySymbol}: {resource.ConsumedTotalHours} Hours X {resource.Employee.HourlyRate.ToString("C2", culture)} = {(resource.ConsumedTotalHours * resource.Employee.HourlyRate).ToString("C2", culture)}").Italic(); ;
+                                        table.Cell().ColumnSpan(4).Border(1).Padding(5)
+                                            .Text($"{resource.ResourceName} - {resource.Employee.Designation} - Monthly Contract - {DateTime.Now:MMMM yyyy}");
+
+                                        table.Cell().ColumnSpan(1).Border(1).Padding(5)
+                                            .Text($"Amount in {currencySymbol}: {resource.ConsumedTotalHours} Hours X {resource.Employee.HourlyRate.ToString("C2", culture)} = {subtotal.ToString("C2", culture)}")
+                                            .Italic();
 
                                         table.Cell().Border(1).Padding(5).AlignCenter().Text("1");
                                         table.Cell().Border(1).Padding(5).AlignCenter().Text($"{resource.Employee.HourlyRate.ToString("C2", culture)}");
-                                        table.Cell().Border(1).Padding(5).AlignCenter().Text($"{(resource.ConsumedTotalHours * resource.Employee.HourlyRate).ToString("C2", culture)}");
+                                        table.Cell().Border(1).Padding(5).AlignCenter().Text($"{subtotal.ToString("C2", culture)}");
                                     }
 
-                                    // Last Section: Software Consultancy Services & Total Amount
+                                    // Total Section
                                     table.Cell().ColumnSpan(1).Border(1).Padding(5).Text("Software Consultancy Services").Bold();
                                     table.Cell().ColumnSpan(3).Border(1).Table(subTable =>
                                     {
@@ -429,7 +460,6 @@ namespace Client_Invoice_System.Services
 
                                         subTable.Cell().Padding(5).Text("Total").Bold();
                                         subTable.Cell().Padding(5).AlignRight().Text($"{totalAmount.ToString("C2", culture)}").Bold();
-
                                         subTable.Cell().Padding(5).Text("Total Due By").Bold();
                                         subTable.Cell().Padding(5).AlignRight().Text($"{DateTime.Now.AddDays(5):MM/dd/yyyy}").Bold();
                                     });
@@ -438,7 +468,7 @@ namespace Client_Invoice_System.Services
                                 col.Item().PaddingTop(5);
                             });
 
-                            // ---- FOOTER ----
+                            // FOOTER
                             page.Footer().AlignCenter().Text("Email: suleman@atrule.com | Web: atrule.com | Phone: +92-313-6120356").FontSize(10);
                         });
                     }).GeneratePdf(ms);
@@ -452,5 +482,6 @@ namespace Client_Invoice_System.Services
                 throw;
             }
         }
+
     }
 }

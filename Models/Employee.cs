@@ -20,7 +20,8 @@ namespace Client_Invoice_System.Models
         [Key]
         public int EmployeeId { get; set; }
 
-        [Required]
+        [Required(ErrorMessage = "Name is required.")]
+        [StringLength(100, ErrorMessage = "Name cannot exceed 100 characters.")]
         public string EmployeeName { get; set; }
 
         [Required]
@@ -29,21 +30,7 @@ namespace Client_Invoice_System.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal HourlyRate { get; set; }
 
-        // ✅ Credit Details
-        [Column(TypeName = "decimal(18,2)")]
-        public decimal CreditLimit { get; set; }
-
-        [Column(TypeName = "decimal(18,2)")]
-        public decimal CreditUsed { get; set; }
-
-        public DateTime CreditExpiryDate { get; set; }
-
-        // ✅ Track Credit Creation & Updates
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow; // Set default on creation
-
-        public DateTime? UpdatedAt { get; set; } // Nullable, only updates when modified
-
-        // Navigation Properties
+        // Navigation Property
         public virtual ICollection<Resource> Resources { get; set; }
     }
 }

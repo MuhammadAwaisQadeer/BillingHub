@@ -7,104 +7,133 @@
 @inject OwnerRepository OwnerRepository
 @inject CountryCurrencyRepository CountryCurrencyRepository
 @inject NavigationManager Navigation
-@* <Breadcrumb /> *@
 
-<h3 class="text-primary text-center">@((Owner.Id == 0) ? "Add Owner Profile" : "Edit Owner Profile")</h3>
+<div class="d-flex align-items-center">
+    <Breadcrumb />
+</div>
+
+
 
 <EditForm Model="Owner" OnValidSubmit="SaveOwnerProfile">
     <DataAnnotationsValidator />
-    <ValidationSummary />
 
     <div class="d-flex justify-content-center">
-    <div class="card shadow p-4" style="max-width: 900px; width: 100%;">
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label fw-bold">Owner Name</label>
-                <input type="text" class="form-control" @bind="Owner.OwnerName" required />
-            </div>
+        <div class="card shadow p-4" style="max-width: 900px; width: 100%;">
+            <h3 class="text-center text-primary mb-4">@((Owner.Id == 0) ? "Add Owner Profile" : "Edit Owner Profile")</h3>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Owner Name</label>
+                    <input type="text" class="form-control" @bind="Owner.OwnerName"  />
+                    <ValidationMessage For="@(() => Owner.OwnerName)" class="text-danger" />
+
+                </div>
 
                 <div class="col-md-6 mb-3">
-                <label class="form-label fw-bold">Billing Email</label>
-                <input type="email" class="form-control" @bind="Owner.BillingEmail" required />
-            </div>
+                    <label class="form-label fw-bold">Billing Email</label>
+                    <input type="email" class="form-control" @bind="Owner.BillingEmail"  />
+                    <ValidationMessage For="@(() => Owner.BillingEmail)" class="text-danger" />
+                </div>
 
                 <div class="col-md-6 mb-3">
-                <label class="form-label fw-bold">Phone Number</label>
-                <input type="tel" class="form-control" @bind="Owner.PhoneNumber" />
-            </div>
+                    <label class="form-label fw-bold">Phone Number</label>
+                    <input type="tel" class="form-control" @bind="Owner.PhoneNumber" />
+                    <ValidationMessage For="@(() => Owner.PhoneNumber)" class="text-danger" />
+                </div>
 
                 <div class="col-md-6 mb-3">
-                <label class="form-label fw-bold">Billing Address</label>
-                <textarea class="form-control" @bind="Owner.BillingAddress"></textarea>
-            </div>
+                    <label class="form-label fw-bold">Billing Address</label>
+                    <textarea class="form-control" @bind="Owner.BillingAddress"></textarea>
+                    <ValidationMessage For="@(() => Owner.BillingAddress)" class="text-danger" />
+                </div>
 
-            <!-- Country & Currency Selection -->
+                <!-- Country & Currency Selection -->
                 <div class="col-md-6 mb-3">
-                <label class="form-label fw-bold">Country & Currency</label>
-                <select class="form-control" @onchange="OnCountryChange">
-                    <option value="">Select Country & Currency</option>
-                    @foreach (var item in CountryCurrencyList)
-                    {
-                        <option value="@item.Id" selected="@(item.Id == Owner.CountryCurrencyId)">
-                            @($"{item.CountryName} ({item.CurrencyCode} - {item.Symbol})")
-                        </option>
-                    }
-                </select>
-            </div>
+                    <label class="form-label fw-bold">Country & Currency</label>
+                    <select class="form-control" @onchange="OnCountryChange">
+                        <option value="">Select Country & Currency</option>
+                        @foreach (var item in CountryCurrencyList)
+                        {
+                            <option value="@item.Id" selected="@(item.Id == Owner.CountryCurrencyId)">
+                                @($"{item.CountryName} ({item.CurrencyCode} - {item.Symbol})")
+                            </option>
+                        }
+                    </select>
+                </div>
 
-            <!-- Auto-selected Currency -->
+                <!-- Auto-selected Currency -->
                 <div class="col-md-6 mb-3">
-                <label class="form-label fw-bold">Default Currency</label>
-                <input type="text" class="form-control" value="@SelectedCurrency" readonly />
-            </div>
+                    <label class="form-label fw-bold">Default Currency</label>
+                    <input type="text" class="form-control" value="@SelectedCurrency" readonly />
 
-                <div class="col-md-6 mb-3">
-                <label class="form-label fw-bold">Custom Currency (Optional)</label>
-                <input type="text" class="form-control" @bind="Owner.CustomCurrency" placeholder="Override Default Currency" />
-            </div>
+                </div>
 
                 <div class="col-md-6 mb-3">
-                <label class="form-label fw-bold">Bank Name</label>
-                <input type="text" class="form-control" @bind="Owner.BankName" />
-            </div>
+                    <label class="form-label fw-bold">Custom Currency (Optional)</label>
+                    <input type="text" class="form-control" @bind="Owner.CustomCurrency" placeholder="Override Default Currency" />
+
+                </div>
 
                 <div class="col-md-6 mb-3">
-                <label class="form-label fw-bold">SWIFT Code</label>
-                <input type="text" class="form-control" @bind="Owner.Swiftcode" />
-            </div>
+                    <label class="form-label fw-bold">Bank Name</label>
+                    <input type="text" class="form-control" @bind="Owner.BankName" />
+                    <ValidationMessage For="@(() => Owner.BankName)" class="text-danger" />
+                </div>
 
                 <div class="col-md-6 mb-3">
-                <label class="form-label fw-bold">Branch Address</label>
-                <input type="text" class="form-control" @bind="Owner.BranchAddress" />
-            </div>
+                    <label class="form-label fw-bold">SWIFT Code</label>
+                    <input type="text" class="form-control" @bind="Owner.Swiftcode" />
+                    <ValidationMessage For="@(() => Owner.Swiftcode)" class="text-danger" />
+                </div>
 
                 <div class="col-md-6 mb-3">
-                <label class="form-label fw-bold">Beneficiary Address</label>
-                <input type="text" class="form-control" @bind="Owner.BeneficeryAddress" />
-            </div>
+                    <label class="form-label fw-bold">Branch Address</label>
+                    <input type="text" class="form-control" @bind="Owner.BranchAddress" />
+                    <ValidationMessage For="@(() => Owner.BranchAddress)" class="text-danger" />
+                </div>
 
                 <div class="col-md-6 mb-3">
-                <label class="form-label fw-bold">IBAN Number</label>
-                <input type="text" class="form-control" @bind="Owner.IBANNumber" required />
-            </div>
+                    <label class="form-label fw-bold">Beneficiary Address</label>
+                    <input type="text" class="form-control" @bind="Owner.BeneficeryAddress" />
+                    <ValidationMessage For="@(() => Owner.BeneficeryAddress)" class="text-danger" />
+                </div>
 
                 <div class="col-md-6 mb-3">
-                <label class="form-label fw-bold">Account Title</label>
-                <input type="text" class="form-control" @bind="Owner.AccountTitle" />
-            </div>
+                    <label class="form-label fw-bold">IBAN Number</label>
+                    <input type="text" class="form-control" @bind="Owner.IBANNumber"  />
+                    <ValidationMessage For="@(() => Owner.IBANNumber)" class="text-danger" />
+                </div>
 
                 <div class="col-md-6 mb-3">
-                <label class="form-label fw-bold">Account Number</label>
-                <input type="text" class="form-control" @bind="Owner.AccountNumber" />
-            </div>
+                    <label class="form-label fw-bold">Account Title</label>
+                    <input type="text" class="form-control" @bind="Owner.AccountTitle" />
+                    <ValidationMessage For="@(() => Owner.AccountTitle)" class="text-danger" />
+                </div>
 
-            <div class="d-flex justify-content-end">
-                <button class="btn btn-secondary me-3" @onclick="Cancel">Cancel</button>
-                <button class="btn btn-primary" @onclick="SaveOwnerProfile">Save</button>
-            </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Account Number</label>
+                    <input type="text" class="form-control" @bind="Owner.AccountNumber" />
+                    <ValidationMessage For="@(() => Owner.AccountNumber)" class="text-danger" />
+                </div>
 
+                <div class="d-flex justify-content-end mt-4">
+                    <button type="button" class="btn btn-secondary me-3" @onclick="Cancel">
+                        <i class="bi bi-x-circle me-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        @if (Owner.Id == 0)
+                        {
+                            <text><i class="bi bi-save me-1"></i>Save</text>
+                        }
+                        else
+                        {
+                            <text><i class="bi bi-pencil-square me-1"></i>Update</text>
+                        }
+                    </button>
+                </div>
+
+            </div>
         </div>
-    </div>
     </div>
 </EditForm>
 

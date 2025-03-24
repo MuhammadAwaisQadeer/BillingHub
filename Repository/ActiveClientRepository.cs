@@ -10,25 +10,32 @@ namespace Client_Invoice_System.Repository
 {
     public class ActiveClientRepository : GenericRepository<ActiveClient>
     {
-        public ActiveClientRepository(ApplicationDbContext context) : base(context) { }
+        public ActiveClientRepository(IDbContextFactory<ApplicationDbContext> contextFactory)
+           : base(contextFactory) { }
 
         public async Task<IEnumerable<ActiveClient>> GetAllActiveClientsAsync()
         {
-            return await _dbSet.ToListAsync();
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Set<ActiveClient>().AsNoTracking().ToListAsync();
         }
 
         public async Task<ActiveClient?> GetActiveClientByIdAsync(int clientId)
         {
-            return await _dbSet.FirstOrDefaultAsync(ac => ac.ClientId == clientId);
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Set<ActiveClient>().AsNoTracking()
+                .FirstOrDefaultAsync(ac => ac.ClientId == clientId);
         }
 
         public async Task UpdateClientStatusAsync(int clientId, bool status)
         {
-            var activeClient = await _dbSet.FirstOrDefaultAsync(ac => ac.ClientId == clientId);
+            using var context = _contextFactory.CreateDbContext();
+            var activeClient = await context.Set<ActiveClient>()
+                .FirstOrDefaultAsync(ac => ac.ClientId == clientId);
+
             if (activeClient != null)
             {
                 activeClient.Status = status;
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
             }
         }
     }

@@ -2,6 +2,7 @@
 using Client_Invoice_System.Models;
 using Client_Invoice_System.Repositories;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -10,75 +11,94 @@ namespace Client_Invoice_System.Repository
 {
     public class OwnerRepository : GenericRepository<OwnerProfile>
     {
-        public OwnerRepository(ApplicationDbContext context) : base(context) { }
+        public OwnerRepository(IDbContextFactory<ApplicationDbContext> contextFactory)
+            : base(contextFactory) { }
 
-        // ✅ Get All Owner Profiles
+        // Get All Owner Profiles
         public async Task<IEnumerable<OwnerProfile>> GetAllOwnerProfilesAsync()
         {
-            return await _dbSet.ToListAsync();
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Set<OwnerProfile>()
+                                .AsNoTracking()
+                                .ToListAsync();
         }
+
+        // Alternative method to get all owners (if needed)
         public async Task<IEnumerable<OwnerProfile>> GetAllOwnersAsync()
         {
-            return await _dbSet.ToListAsync();
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Set<OwnerProfile>()
+                                .AsNoTracking()
+                                .ToListAsync();
         }
 
-        // ✅ Get a Single Owner Profile by ID
+        // Get a Single Owner Profile by ID
         public async Task<OwnerProfile> GetOwnerProfileByIdAsync(int ownerId)
         {
-            return await _dbSet.FirstOrDefaultAsync(o => o.Id == ownerId);
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Set<OwnerProfile>()
+                                .AsNoTracking()
+                                .FirstOrDefaultAsync(o => o.Id == ownerId);
         }
 
-        // ✅ Get First Owner Profile (Existing)
+        // Get First Owner Profile (if any), or return a new instance
         public async Task<OwnerProfile> GetOwnerProfileAsync()
         {
-            return await _dbSet.FirstOrDefaultAsync() ?? new OwnerProfile();
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Set<OwnerProfile>().AsNoTracking().FirstOrDefaultAsync() ?? new OwnerProfile();
         }
 
-        // ✅ Add a New Owner Profile
+        // Add a New Owner Profile
         public async Task AddOwnerProfileAsync(OwnerProfile owner)
         {
+            using var context = _contextFactory.CreateDbContext();
             try
             {
-                await _dbSet.AddAsync(owner);
-                await _context.SaveChangesAsync();
+                await context.Set<OwnerProfile>().AddAsync(owner);
+                await context.SaveChangesAsync();
             }
             catch (Exception)
             {
-
                 throw;
             }
-           
         }
 
-        // ✅ Update Owner Profile
+        // Update Owner Profile
         public async Task UpdateOwnerProfileAsync(OwnerProfile owner)
         {
-            var existingOwner = await _dbSet.FirstOrDefaultAsync(o => o.Id == owner.Id);
+            using var context = _contextFactory.CreateDbContext();
+            var existingOwner = await context.Set<OwnerProfile>().FirstOrDefaultAsync(o => o.Id == owner.Id);
             if (existingOwner != null)
             {
+                // Update the necessary properties
                 existingOwner.OwnerName = owner.OwnerName;
                 existingOwner.BillingEmail = owner.BillingEmail;
                 existingOwner.PhoneNumber = owner.PhoneNumber;
                 existingOwner.BillingAddress = owner.BillingAddress;
+                existingOwner.IBANNumber = owner.IBANNumber;
+                existingOwner.AccountNumber = owner.AccountNumber;
+                existingOwner.CustomCurrency = owner.CustomCurrency;
+                existingOwner.BranchAddress = owner.BranchAddress;
+                existingOwner.BeneficeryAddress = owner.BeneficeryAddress;
 
-                _context.Update(existingOwner);
+                context.Update(existingOwner);
             }
             else
             {
-                await _dbSet.AddAsync(owner);
+                await context.Set<OwnerProfile>().AddAsync(owner);
             }
-
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
         }
 
-        // ✅ Delete Owner Profile
+        // Delete Owner Profile
         public async Task DeleteOwnerProfileAsync(int ownerId)
         {
-            var owner = await _dbSet.FirstOrDefaultAsync(o => o.Id == ownerId);
+            using var context = _contextFactory.CreateDbContext();
+            var owner = await context.Set<OwnerProfile>().FindAsync(ownerId);
             if (owner != null)
             {
-                _dbSet.Remove(owner);
-                await _context.SaveChangesAsync();
+                context.Set<OwnerProfile>().Remove(owner);
+                await context.SaveChangesAsync();
             }
         }
     }

@@ -11,53 +11,63 @@ namespace Client_Invoice_System.Repositories
 {
     public class GenericRepository<T> : IRepository<T> where T : class
     {
-        protected readonly ApplicationDbContext _context;
-        protected readonly DbSet<T> _dbSet;
+        public readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
 
-        public GenericRepository(ApplicationDbContext context)
+        public GenericRepository(IDbContextFactory<ApplicationDbContext> contextFactory)
         {
-            _context = context;
-            _dbSet = _context.Set<T>();
+            _contextFactory = contextFactory;
         }
+        //protected readonly DbSet<T> _dbSet;
+
+        //public GenericRepository(ApplicationDbContext context)
+        //{
+        //    _context = context;
+        //    _dbSet = _context.Set<T>();
+        //}
 
         public async Task<IEnumerable<T>> GetAllAsync(bool includeRelatedEntities = false)
         {
-            IQueryable<T> query = _context.Set<T>();
+            using var context = _contextFactory.CreateDbContext();
+            IQueryable<T> query = context.Set<T>();
 
             if (includeRelatedEntities && typeof(T) == typeof(Client))
             {
                 query = query.Include("CountryCurrency");
             }
 
-            return await query.ToListAsync(); 
+            return await query.AsNoTracking().ToListAsync();
         }
 
 
 
         public virtual async Task<T> GetByIdAsync(int id)
         {
-            return await _dbSet.FindAsync(id);
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Set<T>().AsNoTracking().FirstOrDefaultAsync(e => EF.Property<int>(e, "Id") == id);
         }
 
         public virtual async Task AddAsync(T entity)
         {
-            await _dbSet.AddAsync(entity);
-            await _context.SaveChangesAsync();
+            using var context = _contextFactory.CreateDbContext();
+            await context.Set<T>().AddAsync(entity);
+            await context.SaveChangesAsync();
         }
 
         public virtual async Task UpdateAsync(T entity)
         {
-            _dbSet.Update(entity);
-            await _context.SaveChangesAsync();
+            using var context = _contextFactory.CreateDbContext();
+            context.Set<T>().Update(entity);
+            await context.SaveChangesAsync();
         }
 
         public virtual async Task DeleteAsync(int id)
         {
-            var entity = await _dbSet.FindAsync(id);
+            using var context = _contextFactory.CreateDbContext();
+            var entity = await context.Set<T>().FindAsync(id);
             if (entity != null)
             {
-                _dbSet.Remove(entity);
-                await _context.SaveChangesAsync();
+                context.Set<T>().Remove(entity);
+                await context.SaveChangesAsync();
             }
         }
     }
