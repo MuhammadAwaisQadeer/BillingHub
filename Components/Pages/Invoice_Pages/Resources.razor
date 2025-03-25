@@ -6,6 +6,8 @@
 @inject ResourceRepository ResourceRepository
 @inject EmployeeRepository EmployeeRepository
 @inject ClientRepository ClientRepository
+@inject OwnerRepository OwnerProfileRepository
+
 @using Client_Invoice_System.Components
 <div class="d-flex align-items-center">
     <Breadcrumb />
@@ -43,6 +45,7 @@
                             <th><i class="bi bi-box-seam"></i> Resource Name</th>
                             <th><i class="bi bi-person-workspace"></i> Employee</th>
                             <th><i class="bi bi-clock-history"></i> Consumed Hours</th>
+                            <th><i class="bi bi-person-badge"></i> Owner Profile</th
                             <th><i class="bi bi-bar-chart-line"></i> Contract Status</th>
                             <th><i class="bi bi-gear"></i> Actions</th>
                         </tr>
@@ -55,6 +58,8 @@
                                 <td>@resource.ResourceName</td>
                                 <td>@(resource.Employee?.EmployeeName ?? "Unknown")</td>
                                 <td>@resource.ConsumedTotalHours</td>
+                                <td>@(resource.OwnerProfile?.OwnerName ?? "Not Assigned")</td>
+
                                 <td>
                                     <span class="badge @(resource.IsActive ? "bg-success" : "bg-danger")">
                                         @(resource.IsActive ? "Active" : "Ended")
@@ -213,9 +218,32 @@
     private string searchQuery = "";
     protected override async Task OnInitializedAsync()
     {
-        ResourcesList = (await ResourceRepository.GetAllAsync()).ToList();
-        FilterResources();
+        try
+        {
+            // Fetch all resources from repository
+            ResourcesList = await ResourceRepository.GetAllAsync();
+            var owners = await OwnerProfileRepository.GetAllOwnerProfilesAsync();
+
+            // Map OwnerProfile to each Resource if OwnerProfileId exists
+            foreach (var resource in ResourcesList)
+            {
+                if (resource.OwnerProfileId != null)
+                {
+                    resource.OwnerProfile = owners.FirstOrDefault(o => o.Id == resource.OwnerProfileId);
+                }
+            }
+
+            // Populate filtered and paged lists
+            FilterResources();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching resources: {ex.Message}");
+        }
     }
+
+
+
 
 
     private void NavigateToAddResource()

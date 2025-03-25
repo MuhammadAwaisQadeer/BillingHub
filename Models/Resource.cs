@@ -35,6 +35,9 @@ namespace Client_Invoice_System.Models
         // Navigation Properties
         public virtual Client Client { get; set; }
         public virtual Employee Employee { get; set; }
+        public int OwnerProfileId { get; set; }
+        [ForeignKey("OwnerProfileId")]
+        public virtual OwnerProfile OwnerProfile { get; set; }
     }
 
 }

@@ -4,6 +4,7 @@ using Client_Invoice_System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Client_Invoice_System.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250325004051_updatedidentity")]
+    partial class updatedidentity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -427,9 +430,6 @@ namespace Client_Invoice_System.Migrations
                     b.Property<bool>("IsInvoiced")
                         .HasColumnType("bit");
 
-                    b.Property<int>("OwnerProfileId")
-                        .HasColumnType("int");
-
                     b.Property<string>("ResourceName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -444,8 +444,6 @@ namespace Client_Invoice_System.Migrations
                     b.HasIndex("EmployeeId");
 
                     b.HasIndex("InvoiceId");
-
-                    b.HasIndex("OwnerProfileId");
 
                     b.ToTable("Resources");
                 });
@@ -672,19 +670,11 @@ namespace Client_Invoice_System.Migrations
                         .WithMany("Resources")
                         .HasForeignKey("InvoiceId");
 
-                    b.HasOne("Client_Invoice_System.Models.OwnerProfile", "OwnerProfile")
-                        .WithMany("Resources")
-                        .HasForeignKey("OwnerProfileId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.Navigation("Client");
 
                     b.Navigation("Employee");
 
                     b.Navigation("Invoice");
-
-                    b.Navigation("OwnerProfile");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -754,11 +744,6 @@ namespace Client_Invoice_System.Migrations
                 });
 
             modelBuilder.Entity("Client_Invoice_System.Models.Invoice", b =>
-                {
-                    b.Navigation("Resources");
-                });
-
-            modelBuilder.Entity("Client_Invoice_System.Models.OwnerProfile", b =>
                 {
                     b.Navigation("Resources");
                 });

@@ -7,6 +7,8 @@
 @inject ResourceRepository ResourceRepository
 @inject EmployeeRepository EmployeeRepository
 @inject ClientRepository ClientRepository
+@inject OwnerRepository OwnerProfileRepository
+
 <div class="d-flex align-items-center">
     <Breadcrumb />
 </div>
@@ -51,6 +53,17 @@
                 <InputNumber class="form-control" @bind-Value="EditingResource.ConsumedTotalHours" step="0.01"  />
                 <ValidationMessage For="@(() => EditingResource.ConsumedTotalHours)" class="text-danger" />
             </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">Owner Profile</label>
+                <InputSelect class="form-control" @bind-Value="EditingResource.OwnerProfileId">
+                    <option value="">Select Owner Profile</option>
+                    @foreach (var owner in OwnerProfiles)
+                    {
+                        <option value="@owner.Id">@owner.OwnerName</option>
+                    }
+                </InputSelect>
+            </div>
+
 
 
 
@@ -79,11 +92,14 @@
     private Resource EditingResource = new();
     private List<Client> Clients = new();
     private List<Employee> Employees = new();
+    private List<OwnerProfile> OwnerProfiles = new();  
 
     protected override async Task OnInitializedAsync()
     {
         Clients = (await ClientRepository.GetAllAsync()).ToList();
         Employees = (await EmployeeRepository.GetAllAsync()).ToList();
+        OwnerProfiles = (await OwnerProfileRepository.GetAllOwnerProfilesAsync()).ToList();  // ✅ Fix: Call on Injected Instance
+
         // if (EditingResource.DueDate == null || EditingResource.DueDate == DateTime.MinValue)
         // {
         //     EditingResource.DueDate = DateTime.Today;

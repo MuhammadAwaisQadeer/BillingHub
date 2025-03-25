@@ -91,5 +91,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .WithMany()
             .HasForeignKey(i => i.CountryCurrencyId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Resource>()
+               .HasOne(r => r.OwnerProfile)
+               .WithMany(o => o.Resources)
+               .HasForeignKey(r => r.OwnerProfileId)
+               .OnDelete(DeleteBehavior.Restrict);
     }
 }

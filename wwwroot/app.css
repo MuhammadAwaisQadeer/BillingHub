@@ -82,3 +82,57 @@ h1:focus {
     align-items: baseline; /* Aligns text properly with the breadcrumb */
     gap: 5px;
 }
+
+
+
+
+.sidebar {
+    width: 60px; /* Collapsed width */
+    height: 100vh;
+    background-color: #333;
+    color: white;
+    overflow: hidden;
+    transition: width 0.3s ease-in-out;
+    position: fixed;
+    top: 0;
+    left: 0;
+}
+
+    .sidebar:hover {
+        width: 200px; /* Expanded width */
+    }
+
+.nav-scrollable {
+    display: flex;
+    flex-direction: column;
+    padding-top: 10px;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    color: white;
+    text-decoration: none;
+    transition: background 0.2s ease;
+}
+
+    .nav-link:hover {
+        background-color: #555;
+    }
+
+    .nav-link span {
+        font-size: 20px;
+        width: 40px; /* Ensures icons are aligned */
+        text-align: center;
+    }
+
+.link-text {
+    opacity: 0;
+    white-space: nowrap;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.sidebar:hover .link-text {
+    opacity: 1;
+}

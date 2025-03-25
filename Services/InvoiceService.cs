@@ -162,7 +162,7 @@ namespace Client_Invoice_System.Services
                 if (client == null)
                     throw new Exception("Client not found!");
 
-                // ✅ Only fetch resources that have NOT been invoiced yet
+                // Only select resources that haven't been invoiced yet
                 var newResources = client.Resources.Where(r => !r.IsInvoiced).ToList();
                 decimal newAmount = newResources.Sum(r => r.ConsumedTotalHours * r.Employee.HourlyRate);
 
@@ -177,10 +177,10 @@ namespace Client_Invoice_System.Services
 
                 if (existingUnpaidInvoice != null && !existingUnpaidInvoice.IsPaid)
                 {
-                    // ✅ Update existing invoice
+                    // Update existing invoice
                     existingUnpaidInvoice.TotalAmount += newAmount;
 
-                    // ✅ Assign the existing invoice to these new resources
+                    // Only add resources that are not already invoiced
                     newResources.ForEach(r =>
                     {
                         r.IsInvoiced = true;
@@ -193,7 +193,7 @@ namespace Client_Invoice_System.Services
                 }
                 else
                 {
-                    // ✅ Create a new invoice if no unpaid invoice exists
+                    // Create a new invoice
                     var newInvoice = new Invoice
                     {
                         ClientId = clientId,
@@ -207,7 +207,7 @@ namespace Client_Invoice_System.Services
                     await _context.Invoices.AddAsync(newInvoice);
                     await _context.SaveChangesAsync();
 
-                    // ✅ Assign new invoice ID to resources
+                    // Mark these resources as invoiced and attach them to the invoice
                     newResources.ForEach(r =>
                     {
                         r.IsInvoiced = true;
@@ -225,7 +225,6 @@ namespace Client_Invoice_System.Services
                 throw;
             }
         }
-
 
 
 
@@ -288,43 +287,65 @@ namespace Client_Invoice_System.Services
         {
             try
             {
-                // Load the client, including resources and related employee and country currency info
                 var client = await _context.Clients
-                    .Where(c => c.ClientId == clientId)
-                    .Include(c => c.Resources)
-                        .ThenInclude(r => r.Employee)
-                    .Include(c => c.CountryCurrency)
-                    .FirstOrDefaultAsync();
+              .Where(c => c.ClientId == clientId)
+              .Include(c => c.Resources)
+                  .ThenInclude(r => r.OwnerProfile)
+              .Include(c => c.Resources)
+                  .ThenInclude(r => r.Employee)
+              .Include(c => c.CountryCurrency)
+              .FirstOrDefaultAsync();
 
                 if (client == null)
                     throw new Exception("Client not found!");
 
-                // Load the owner's payment profile
-                var paymentProfile = await _context.Owners.FirstOrDefaultAsync();
-                if (paymentProfile == null)
-                    throw new Exception("Owner's Payment profile not found!");
-
-
-                // ✅ Fetch only the unpaid invoice
-                // ✅ Fetch only the unpaid invoice along with its related data
-                // ✅ Fetch only unpaid invoices with necessary details
+                // Fetch the unpaid invoice with its related data
                 var unpaidInvoice = await _context.Invoices
-              .Where(i => i.ClientId == clientId && !i.IsPaid)
-              .Include(i => i.Resources)
-                  .ThenInclude(r => r.Employee)
-              .Include(i => i.CountryCurrency)
-              .Include(i => i.Client)
-              .OrderByDescending(i => i.InvoiceDate)
-              .FirstOrDefaultAsync();
+                 .Where(i => i.ClientId == clientId && !i.IsPaid)
+                 .Include(i => i.Resources)
+                     .ThenInclude(r => r.OwnerProfile)
+                 .Include(i => i.Resources)
+                     .ThenInclude(r => r.Employee)
+                 .Include(i => i.CountryCurrency)
+                 .Include(i => i.Client)
+                 .OrderByDescending(i => i.InvoiceDate)
+                 .FirstOrDefaultAsync();
 
                 if (unpaidInvoice == null)
                     throw new Exception("No unpaid invoice found!");
 
                 // Use only the resources linked to this unpaid invoice
-                var resourcesForInvoice = unpaidInvoice.Resources.ToList();
+                var resourcesForInvoice = await _context.Resources
+                 .Where(r => r.InvoiceId == unpaidInvoice.InvoiceId)
+                 .Include(r => r.Employee)
+                 .Include(r => r.OwnerProfile)
+                 .ToListAsync();
 
                 // Total amount as stored in the invoice
                 decimal totalAmount = unpaidInvoice.TotalAmount;
+
+                // Get the owner profile from the client's resources
+                var ownerProfile = client.Resources.FirstOrDefault()?.OwnerProfile;
+
+                // Fallback to default payment details if no profile is found
+                if (ownerProfile == null)
+                {
+                    ownerProfile = new OwnerProfile
+                    {
+                        OwnerName = "Default Owner",
+                        BillingEmail = "default@email.com",
+                        PhoneNumber = "+923000000000",
+                        BillingAddress = "Default Billing Address",
+                        CountryCurrency = new CountryCurrency { CurrencyCode = "USD" },
+                        BankName = "Default Bank",
+                        Swiftcode = "DFLTUS33XXX",
+                        AccountTitle = "Default Account",
+                        IBANNumber = "US00DEFAULTIBAN",
+                        BranchAddress = "Default Branch Address",
+                        BeneficeryAddress = "Default Beneficiary Address",
+                        AccountNumber = "0000000000"
+                    };
+                }
 
 
                 // Determine culture and currency symbol
@@ -395,13 +416,13 @@ namespace Client_Invoice_System.Services
                                         table.Cell().Padding(2).Text(value);
                                     }
 
-                                    AddPaymentRow("Currency:", paymentProfile?.CountryCurrency?.CurrencyCode ?? "USD");
-                                    AddPaymentRow("Bank Name:", paymentProfile.BankName);
-                                    AddPaymentRow("Swift Code:", paymentProfile.Swiftcode);
-                                    AddPaymentRow("Account Title:", paymentProfile.AccountTitle);
-                                    AddPaymentRow("IBAN:", paymentProfile.IBANNumber);
-                                    AddPaymentRow("Branch Address:", paymentProfile.BranchAddress);
-                                    AddPaymentRow("Beneficiary Address:", paymentProfile.BeneficeryAddress);
+                                    AddPaymentRow("Currency:", ownerProfile?.CountryCurrency?.CurrencyCode ?? "USD");
+                                    AddPaymentRow("Bank Name:", ownerProfile.BankName);
+                                    AddPaymentRow("Swift Code:", ownerProfile.Swiftcode);
+                                    AddPaymentRow("Account Title:", ownerProfile.AccountTitle);
+                                    AddPaymentRow("IBAN:", ownerProfile.IBANNumber);
+                                    AddPaymentRow("Branch Address:", ownerProfile.BranchAddress);
+                                    AddPaymentRow("Beneficiary Address:", ownerProfile.BeneficeryAddress);
                                 });
 
                                 col.Item().PaddingTop(10);
