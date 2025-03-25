@@ -1,0 +1,143 @@
+﻿@page "/Account/Login"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Identity
+@using Client_Invoice_System.Data
+
+@inject SignInManager<ApplicationUser> SignInManager
+@inject ILogger<Login> Logger
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Login</PageTitle>
+
+<div class="container d-flex justify-content-center align-items-center min-vh-100">
+    <div class="row w-100">
+        <div class="col-lg-5 col-md-7 mx-auto">
+            <div class="card shadow-lg border-0 rounded-4">
+                <div class="card-body p-4">
+                    <div class="text-center mb-3">
+                        <i class="bi bi-person-circle text-primary" style="font-size: 4rem;"></i>
+                        <h2 class="fw-bold text-dark">Welcome Back</h2>
+                        <p class="text-muted">Login to continue</p>
+                    </div>
+
+                    <StatusMessage Message="@errorMessage" />
+
+                    <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger" role="alert" />
+
+                        <!-- Email Input -->
+                        <div class="form-floating mb-3">
+                            <div class="input-group">
+                                <span class="input-group-text bg-primary text-white">
+                                    <i class="bi bi-envelope"></i>
+                                </span>
+                                <InputText @bind-Value="Input.Email" class="form-control" autocomplete="username" placeholder="Email" />
+                            </div>
+                            <ValidationMessage For="() => Input.Email" class="text-danger small" />
+                        </div>
+
+                        <!-- Password Input -->
+                        <div class="form-floating mb-3">
+                            <div class="input-group">
+                                <span class="input-group-text bg-primary text-white">
+                                    <i class="bi bi-lock"></i>
+                                </span>
+                                <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="current-password" placeholder="Password" />
+                            </div>
+                            <ValidationMessage For="() => Input.Password" class="text-danger small" />
+                        </div>
+
+                        <!-- Remember Me & Forgot Password -->
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="form-check">
+                                <InputCheckbox @bind-Value="Input.RememberMe" class="form-check-input" />
+                                <label class="form-check-label">Remember me</label>
+                            </div>
+                            <a href="Account/ForgotPassword" class="text-decoration-none text-primary">Forgot Password?</a>
+                        </div>
+
+                        <!-- Login Button -->
+                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">Log In</button>
+
+                        <!-- Register Link -->
+                        <div class="text-center mt-3">
+                            <p class="text-muted">
+                                Don't have an account?
+                                <NavLink href="Account/Register" class="text-primary fw-bold">Register here</NavLink>
+                            </p>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+
+            <!-- Social Login -->
+            @* <div class="text-center mt-3"> *@
+            @*     <h5 class="text-muted">Or log in with</h5> *@
+            @*     <hr /> *@
+            @*     <ExternalLoginPicker /> *@
+            @* </div> *@
+        </div>
+    </div>
+</div>
+
+@code {
+    private string? errorMessage;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (HttpMethods.IsGet(HttpContext.Request.Method))
+        {
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+        }
+    }
+
+    public async Task LoginUser()
+    {
+        var result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+        if (result.Succeeded)
+        {
+            Logger.LogInformation("User logged in.");
+            RedirectManager.RedirectTo(ReturnUrl);
+        }
+        else if (result.RequiresTwoFactor)
+        {
+            RedirectManager.RedirectTo("Account/LoginWith2fa", new() { ["returnUrl"] = ReturnUrl, ["rememberMe"] = Input.RememberMe });
+        }
+        else if (result.IsLockedOut)
+        {
+            Logger.LogWarning("User account locked out.");
+            RedirectManager.RedirectTo("Account/Lockout");
+        }
+        else
+        {
+            errorMessage = "Invalid login attempt.";
+        }
+    }
+
+    private sealed class InputModel
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = "";
+
+        [Required]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = "";
+
+        [Display(Name = "Remember me?")]
+        public bool RememberMe { get; set; }
+    }
+}

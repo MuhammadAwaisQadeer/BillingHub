@@ -1,0 +1,173 @@
+﻿@page "/add-client"
+@page "/edit-client/{ClientId:int}"
+@rendermode InteractiveServer
+@using Client_Invoice_System.Models
+@using Client_Invoice_System.Repositories
+@using Client_Invoice_System.Repository
+@inject ClientRepository ClientRepo
+@inject NavigationManager Navigation
+@inject CountryCurrencyRepository CountryCurrencyRepository
+
+<div class="d-flex align-items-center">
+    <Breadcrumb />
+</div>
+
+
+<EditForm Model="client" OnValidSubmit="SaveClient">
+    <DataAnnotationsValidator />
+    <div class="d-flex justify-content-center">
+        <div class="card shadow p-4 w-100" style="max-width: 650px;">
+            <h3 class="text-center text-primary mb-4">
+                @(ClientId == 0 ? "Add Client" : "Edit Client")
+            </h3>
+            <!-- Row 1: Name & Email -->
+            <div class="row">
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Name:</label>
+                    <InputText class="form-control" @bind-Value="client.Name" />
+                    <ValidationMessage For="@(() => client.Name)" class="text-danger" />
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Email:</label>
+                    <InputText class="form-control" type="email" @bind-Value="client.Email" />
+                    <ValidationMessage For="@(() => client.Email)" class="text-danger" />
+                </div>
+            </div>
+
+            <!-- Row 2: Address & Phone Number -->
+            <div class="row">
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Address:</label>
+                    <InputText class="form-control" @bind-Value="client.Address" />
+                    <ValidationMessage For="@(() => client.Address)" class="text-danger" />
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Phone Number:</label>
+                    <InputText class="form-control" @bind-Value="client.PhoneNumber" />
+                    <ValidationMessage For="@(() => client.PhoneNumber)" class="text-danger" />
+                </div>
+            </div>
+
+            <!-- Row 3: Country & Currency -->
+            <div class="row">
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Country</label>
+                    <select class="form-control" @onchange="OnCountryChange">
+                        <option value="">Select Country</option>
+                        @foreach (var item in CountryCurrencyList)
+                        {
+                            <option value="@item.Id" selected="@(item.Id == client.CountryCurrencyId)">
+                                @($"{item.CountryName} ({item.CurrencyCode} - {item.Symbol})")
+                            </option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Currency</label>
+                    <input type="text" class="form-control" value="@SelectedCurrency" readonly />
+                </div>
+            </div>
+
+            <!-- Row 4: Custom Currency & Client Identifier -->
+            <div class="row">
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Custom Currency (Optional)</label>
+                    <input type="text" class="form-control" @bind="client.CustomCurrency" placeholder="Override Default Currency" />
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Client Identifier:</label>
+                    <InputText class="form-control" @bind-Value="client.ClientIdentifier" maxlength="5" />
+                    <ValidationMessage For="@(() => client.ClientIdentifier)" class="text-danger" />
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-flex justify-content-end gap-2 flex-wrap mt-4">
+                <button type="button" class="btn btn-secondary me-3" @onclick="Cancel">
+                    <i class="bi bi-x-circle me-1"></i> Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    @if (ClientId == 0)
+                    {
+                        <text>
+                            <i class="bi bi-save me-1"></i> Save
+                        </text>
+                    }
+                    else
+                    {
+                        <text>
+                            <i class="bi bi-pencil-square me-1"></i> Update
+                        </text>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+
+</EditForm>
+
+@code {
+    [Parameter] public int ClientId { get; set; }
+    private Client client = new();
+    private List<CountryCurrency> CountryCurrencyList = new();
+    private string SelectedCurrency = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            CountryCurrencyList = (await CountryCurrencyRepository.GetAllAsync()).ToList();
+
+            if (ClientId != 0)
+            {
+                client = await ClientRepo.GetByIdAsync(ClientId) ?? new Client();
+            }
+
+            UpdateSelectedCurrency();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error loading client or countries: {ex.Message}");
+        }
+    }
+
+    private async Task SaveClient()
+    {
+        try
+        {
+            if (ClientId == 0)
+            {
+                await ClientRepo.AddAsync(client);
+            }
+            else
+            {
+                await ClientRepo.UpdateAsync(client);
+            }
+
+            Navigation.NavigateTo("/clients");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error saving client: {ex.Message}");
+        }
+    }
+
+    private void OnCountryChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int selectedId))
+        {
+            client.CountryCurrencyId = selectedId; // Update the bound value manually
+            UpdateSelectedCurrency();
+        }
+    }
+
+    private void UpdateSelectedCurrency()
+    {
+        var selectedCountry = CountryCurrencyList.FirstOrDefault(c => c.Id == client.CountryCurrencyId);
+        SelectedCurrency = selectedCountry != null ? $"{selectedCountry.CurrencyName} ({selectedCountry.Symbol})" : "";
+    }
+    private async Task Cancel()
+    {
+        Navigation.NavigateTo("/clients");
+    }
+}

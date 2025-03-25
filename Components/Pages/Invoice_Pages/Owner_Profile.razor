@@ -1,0 +1,223 @@
+﻿@page "/owner-profile"
+@rendermode InteractiveServer
+@using Client_Invoice_System.Models
+@using Client_Invoice_System.Repositories
+@using Client_Invoice_System.Repository
+@inject OwnerRepository OwnerRepository
+@inject NavigationManager Navigation
+@using Client_Invoice_System.Components
+<div class="d-flex align-items-center">
+    <Breadcrumb />
+</div>
+<div class="">
+    <!-- Page Header -->
+    <div class="row mb-3 align-items-center">
+        <div class="col-md-6">
+            <h3 class="text-primary">Owner Profiles (@(Owners?.Count ?? 0))</h3>
+        </div>
+        <div class="col-md-6 d-flex justify-content-end">
+            <button class="btn btn-primary w-30 w-md-auto" @onclick="AddOwnerProfile"><i class="bi bi-plus-circle me-1"></i>Add New Owner Profile</button>
+        </div>
+    </div>
+
+    <!-- Owner Table -->
+    <div class="card p-3 shadow-lg rounded-4 bg-white">
+        @if (Owners != null && Owners.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-striped text-center">
+                    @* Centered inner table data *@
+                    <thead class="">
+                        <tr>
+                            <th class="text-start"><i class="bi bi-person-fill"></i> Owner Name</th>
+                            <th><i class="bi bi-envelope"></i> Billing Email</th>
+                            <th><i class="bi bi-telephone"></i> Phone Number</th>
+                            <th><i class="bi bi-geo-alt"></i> Billing Address</th>
+                            <th><i class="bi bi-credit-card"></i> IBAN Number</th>
+                            <th><i class="bi bi-bank"></i> Account Number</th>
+                            <th><i class="bi bi-globe"></i> Country</th>
+                            <th><i class="bi bi-currency-exchange"></i> Currency</th>
+                            <th><i class="bi bi-gear"></i> Actions</th>
+                        </tr>
+
+                    </thead>
+                    <tbody>
+                        @foreach (var owner in Owners)
+                        {
+                            <tr>
+                                <td class="text-start">@owner.OwnerName</td>  @* Keep left-aligned for readability *@
+                                <td>@owner.BillingEmail</td>
+                                <td>@owner.PhoneNumber</td>
+                                <td>@owner.BillingAddress</td>
+                                <td>@owner.IBANNumber</td>
+                                <td>@owner.AccountNumber</td>
+                                <td>@(owner.CountryCurrency?.CountryName ?? "N/A")</td>
+                                <td>
+                                    @(owner.CustomCurrency?.Trim() != ""
+                                        ? owner.CustomCurrency
+                                        : owner.CountryCurrency?.CurrencyName ?? "N/A")
+                                    (@(owner.CountryCurrency?.CurrencyCode ?? "-") - @(owner.CountryCurrency?.Symbol ?? "-"))
+                                </td>
+                                <td class="nowrap">
+                                    <button class="btn btn-sm btn-warning me-2" @onclick="() => EditOwnerProfile(owner.Id)"><i class="bi bi-pencil-square me-1"></i>Edit</button>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => ShowDeleteModal(owner.Id, owner.OwnerName)"><i class="bi bi-trash me-1"></i> Delete</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <p class="text-muted text-center">No owner profiles found.</p>
+        }
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+@if (isDeleteModalVisible)
+{
+    <div class="modal-overlay">
+        <div class="delete-modal">
+            <p class="fw-bold">Are you sure you want to delete <span class="text-danger">@ownerToDeleteName</span>?</p>
+            <div class="d-flex flex-column flex-md-row justify-content-center gap-3">
+                <button class="btn btn-danger w-100 w-md-auto" @onclick="ConfirmDelete"> <i class="bi bi-trash"></i> Yes, Delete</button>
+                <button class="btn btn-secondary w-100 w-md-auto" @onclick="CancelDelete"><i class="bi bi-x-circle"></i>Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    /* Page Container */
+    .container {
+        max-width: 1200px;
+    }
+
+    /* Table Wrapper */
+    .table-responsive {
+        overflow-x: auto;
+        min-width: 100%;
+        display: block;
+        white-space: nowrap;
+    }
+
+    /* Center Align Table Data */
+    tbody td {
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    /* Keep Headers Left-Aligned */
+    thead th {
+        text-align: center;
+    }
+
+    th, td {
+        min-width: 150px;
+    }
+
+        td.nowrap {
+            white-space: nowrap;
+        }
+    /* Modal Styling */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1050;
+    }
+
+    .delete-modal {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        text-align: center;
+        max-width: 400px;
+    }
+
+    /* Buttons */
+    .btn-sm {
+        min-width: 70px;
+    }
+
+    /* Responsive Adjustments */
+    /* media (max-width: 768px) { */
+    /*     th, td */
+
+    /* { */
+    /*     min-width: 120px; */
+    /* } */
+
+    /* .btn-sm { */
+    /*     width: 100%; */
+    /* } */
+
+    /* } */
+    </style>
+
+@code {
+    private List<OwnerProfile> Owners = new();
+    private bool isDeleteModalVisible = false;
+    private int ownerToDelete;
+    private string ownerToDeleteName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Owners = (await OwnerRepository.GetAllOwnerProfilesAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error loading owner profiles: {ex.Message}");
+        }
+    }
+
+    private void AddOwnerProfile()
+    {
+        Navigation.NavigateTo("/add-owner-profile");
+    }
+
+    private void EditOwnerProfile(int ownerId)
+    {
+        Navigation.NavigateTo($"/edit-owner-profile/{ownerId}");
+    }
+
+    private void ShowDeleteModal(int ownerId, string ownerName)
+    {
+        ownerToDelete = ownerId;
+        ownerToDeleteName = ownerName;
+        isDeleteModalVisible = true;
+    }
+
+    private void CancelDelete()
+    {
+        isDeleteModalVisible = false;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        try
+        {
+            await OwnerRepository.DeleteOwnerProfileAsync(ownerToDelete);
+            Owners = (await OwnerRepository.GetAllOwnerProfilesAsync()).ToList(); // Refresh list
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error deleting owner profile: {ex.Message}");
+        }
+        finally
+        {
+            isDeleteModalVisible = false;
+        }
+    }
+}

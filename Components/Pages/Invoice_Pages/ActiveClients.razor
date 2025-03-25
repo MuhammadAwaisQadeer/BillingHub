@@ -1,0 +1,56 @@
+﻿@page "/active-clients"
+@rendermode InteractiveServer
+@using Client_Invoice_System.Models
+@using Client_Invoice_System.Repositories
+@using Client_Invoice_System.Repository
+@inject ActiveClientRepository ActiveClientRepository
+@using Client_Invoice_System.Components
+
+<Breadcrumb />
+
+
+<h3>Active Clients</h3>
+@if (activeClients != null)
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Client ID</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var client in activeClients)
+            {
+                <tr>
+                    <td>@client.ClientId</td>
+                    <td>@(client.Status ? "Active" : "Inactive")</td>
+                    <td>
+                        <button class="btn btn-sm btn-success" @onclick="() => ToggleClientStatus(client.ClientId, true)" disabled="@(client.Status)">Activate</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => ToggleClientStatus(client.ClientId, false)" disabled="@(client.Status == false)">Deactivate</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>Loading...</p>
+}
+
+@code {
+    private List<ActiveClient> activeClients = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        activeClients = (await ActiveClientRepository.GetAllActiveClientsAsync()).ToList();
+    }
+
+    private async Task ToggleClientStatus(int clientId, bool status)
+    {
+        await ActiveClientRepository.UpdateClientStatusAsync(clientId, status);
+        activeClients = (await ActiveClientRepository.GetAllActiveClientsAsync()).ToList();
+    }
+}

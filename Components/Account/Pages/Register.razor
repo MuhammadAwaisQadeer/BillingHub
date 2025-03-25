@@ -1,0 +1,182 @@
+﻿@page "/Account/Register"
+
+@using System.ComponentModel.DataAnnotations
+@using System.Text
+@using System.Text.Encodings.Web
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
+@using Client_Invoice_System.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject IUserStore<ApplicationUser> UserStore
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IEmailSender<ApplicationUser> EmailSender
+@inject ILogger<Register> Logger
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Register</PageTitle>
+
+<div class="container d-flex justify-content-center align-items-center min-vh-100">
+    <div class="row w-100">
+        <div class="col-lg-5 col-md-7 mx-auto">
+            <div class="card shadow-lg border-0 rounded-4">
+                <div class="card-body p-4">
+                    <div class="text-center mb-3">
+                        <i class="bi bi-person-plus text-primary" style="font-size: 4rem;"></i>
+                        <h2 class="fw-bold text-dark">Create Account</h2>
+                        <p class="text-muted">Join us today</p>
+                    </div>
+
+                    <StatusMessage Message="@Message" />
+
+                    <EditForm Model="Input" asp-route-returnUrl="@ReturnUrl" method="post" OnValidSubmit="RegisterUser" FormName="register">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger" role="alert" />
+
+                        <!-- Email Input -->
+                        <div class="form-floating mb-3">
+                            <div class="input-group">
+                                <span class="input-group-text bg-primary text-white">
+                                    <i class="bi bi-envelope"></i>
+                                </span>
+                                <InputText @bind-Value="Input.Email" class="form-control" autocomplete="username" placeholder="Email" />
+                            </div>
+                            <ValidationMessage For="() => Input.Email" class="text-danger small" />
+                        </div>
+
+                        <!-- Password Input -->
+                        <div class="form-floating mb-3">
+                            <div class="input-group">
+                                <span class="input-group-text bg-primary text-white">
+                                    <i class="bi bi-lock"></i>
+                                </span>
+                                <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="new-password" placeholder="Password" />
+                            </div>
+                            <ValidationMessage For="() => Input.Password" class="text-danger small" />
+                        </div>
+
+                        <!-- Confirm Password Input -->
+                        <div class="form-floating mb-3">
+                            <div class="input-group">
+                                <span class="input-group-text bg-primary text-white">
+                                    <i class="bi bi-lock-fill"></i>
+                                </span>
+                                <InputText type="password" @bind-Value="Input.ConfirmPassword" class="form-control" autocomplete="new-password" placeholder="Confirm Password" />
+                            </div>
+                            <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger small" />
+                        </div>
+
+                        <!-- Register Button -->
+                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">Register</button>
+
+                        <!-- Already have an account? -->
+                        <div class="text-center mt-3">
+                            <p class="text-muted">
+                                Already have an account?
+                                <a href="/Account/Login" class="text-primary fw-bold">Login here</a>
+                            </p>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+
+            <!-- Social Login -->
+            <div class="text-center mt-3">
+                <h5 class="text-muted">Or sign up with</h5>
+                <hr />
+                <ExternalLoginPicker />
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private IEnumerable<IdentityError>? identityErrors;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    private string? Message => identityErrors is null ? null : $"Error: {string.Join(", ", identityErrors.Select(error => error.Description))}";
+
+    public async Task RegisterUser(EditContext editContext)
+    {
+        var user = CreateUser();
+
+        await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
+        var emailStore = GetEmailStore();
+        await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
+        var result = await UserManager.CreateAsync(user, Input.Password);
+
+        if (!result.Succeeded)
+        {
+            identityErrors = result.Errors;
+            return;
+        }
+
+        Logger.LogInformation("User created a new account with password.");
+
+        var userId = await UserManager.GetUserIdAsync(user);
+        var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
+        code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+        var callbackUrl = NavigationManager.GetUriWithQueryParameters(
+            NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
+            new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code, ["returnUrl"] = ReturnUrl });
+
+        await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
+
+        if (UserManager.Options.SignIn.RequireConfirmedAccount)
+        {
+            RedirectManager.RedirectTo(
+                "Account/RegisterConfirmation",
+                new() { ["email"] = Input.Email, ["returnUrl"] = ReturnUrl });
+        }
+
+        await SignInManager.SignInAsync(user, isPersistent: false);
+        RedirectManager.RedirectTo(ReturnUrl);
+    }
+
+    private ApplicationUser CreateUser()
+    {
+        try
+        {
+            return Activator.CreateInstance<ApplicationUser>();
+        }
+        catch
+        {
+            throw new InvalidOperationException($"Can't create an instance of '{nameof(ApplicationUser)}'. " +
+                $"Ensure that '{nameof(ApplicationUser)}' is not an abstract class and has a parameterless constructor.");
+        }
+    }
+
+    private IUserEmailStore<ApplicationUser> GetEmailStore()
+    {
+        if (!UserManager.SupportsUserEmail)
+        {
+            throw new NotSupportedException("The default UI requires a user store with email support.");
+        }
+        return (IUserEmailStore<ApplicationUser>)UserStore;
+    }
+
+    private sealed class InputModel
+    {
+        [Required]
+        [EmailAddress]
+        [Display(Name = "Email")]
+        public string Email { get; set; } = "";
+
+        [Required]
+        [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
+        [DataType(DataType.Password)]
+        [Display(Name = "Password")]
+        public string Password { get; set; } = "";
+
+        [DataType(DataType.Password)]
+        [Display(Name = "Confirm password")]
+        [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
+        public string ConfirmPassword { get; set; } = "";
+    }
+}

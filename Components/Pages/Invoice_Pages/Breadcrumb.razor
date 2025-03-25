@@ -1,0 +1,124 @@
+﻿@inject NavigationManager NavManager
+@inject ClientRepository ClientRepo
+@inject EmployeeRepository EmployeeRepo
+@inject ResourceRepository ResourceRepo
+@inject OwnerRepository OwnerRepo
+@using Client_Invoice_System.Repository
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/">Home</a></li>
+
+        @if (IsEditPage)
+        {
+            <li class="breadcrumb-item"><a href="@ParentPageUrl">@ParentPageTitle</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Edit @EntityType (@EntityName)</li>
+        }
+        else if (IsAddPage)
+        {
+            <li class="breadcrumb-item"><a href="@ParentPageUrl">@ParentPageTitle</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Add @EntityType</li>
+        }
+        else
+        {
+            <li class="breadcrumb-item active" aria-current="page">@ParentPageTitle</li>
+        }
+    </ol>
+</nav>
+
+@code {
+    private bool IsEditPage = false;
+    private bool IsAddPage = false;
+    private string ParentPageTitle = "";
+    private string ParentPageUrl = "";
+    private string EntityType = "";
+    private string EntityName = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        string currentUrl = NavManager.Uri.Replace(NavManager.BaseUri, "").Trim('/');
+        var parts = currentUrl.Split('/');
+
+        Console.WriteLine($"Current URL: {currentUrl}");
+        Console.WriteLine($"URL Parts: {string.Join(", ", parts)}");
+
+        var routes = new Dictionary<string, string>
+        {
+            { "clients", "Clients" },
+            { "employees", "Employees" },
+            { "resources", "Contracts" },
+            { "owner-profile", "Owner Profile" },
+            { "invoicesPage", "Invoices" }
+        };
+
+        if (parts.Length > 0)
+        {
+            string firstSegment = parts[0];
+
+            if (routes.ContainsKey(firstSegment))
+            {
+                ParentPageTitle = routes[firstSegment];
+                ParentPageUrl = "/" + firstSegment;
+            }
+            else if (firstSegment.StartsWith("edit-") && parts.Length > 1)
+            {
+                IsEditPage = true;
+                EntityType = GetEntityTypeFromUrl(firstSegment);
+                ParentPageTitle = EntityType + "s"; // Example: Clients, Employees
+                ParentPageUrl = "/" + ParentPageTitle.ToLower();
+                EntityName = await GetEntityNameAsync(parts[1], firstSegment);
+            }
+            else if (firstSegment.StartsWith("add-"))
+            {
+                IsAddPage = true;
+                EntityType = GetEntityTypeFromUrl(firstSegment);
+                ParentPageTitle = EntityType + "s";
+                ParentPageUrl = "/" + ParentPageTitle.ToLower();
+            }
+        }
+    }
+
+    private string GetEntityTypeFromUrl(string urlSegment)
+    {
+        if (urlSegment.Contains("client")) return "Client";
+        if (urlSegment.Contains("employee")) return "Employee";
+        if (urlSegment.Contains("resource")) return "Contract";
+        if (urlSegment.Contains("owner")) return "Owner";
+        return "Unknown";
+    }
+
+    private async Task<string> GetEntityNameAsync(string id, string entityType)
+    {
+        if (!int.TryParse(id, out int entityId))
+        {
+            return "Unknown";
+        }
+
+        if (entityType.Contains("client"))
+        {
+            if (ClientRepo == null) throw new InvalidOperationException("ClientRepo is not initialized.");
+            var client = await ClientRepo.GetByIdAsync(entityId);
+            return client?.Name ?? "Unknown Client";
+        }
+        else if (entityType.Contains("employee"))
+        {
+            if (EmployeeRepo == null) throw new InvalidOperationException("EmployeeRepo is not initialized.");
+            var employee = await EmployeeRepo.GetByIdAsync(entityId);
+            return employee?.EmployeeName ?? "Unknown Employee";
+        }
+        else if (entityType.Contains("resource"))
+        {
+            if (ResourceRepo == null) throw new InvalidOperationException("ResourceRepo is not initialized.");
+            var resource = await ResourceRepo.GetByIdAsync(entityId);
+            return resource?.ResourceName ?? "Unknown Contract";
+        }
+        else if (entityType.Contains("owner"))
+        {
+            if (OwnerRepo == null) throw new InvalidOperationException("OwnerRepo is not initialized.");
+            var owner = await OwnerRepo.GetByIdAsync(entityId);
+            return owner?.OwnerName ?? "Unknown Owner";
+        }
+
+        return "Unknown";
+    }
+}

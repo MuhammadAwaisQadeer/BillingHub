@@ -1,0 +1,152 @@
+﻿/* General Styling */
+body {
+    background: #f8f9fa;
+    font-family: 'Poppins', sans-serif;
+}
+
+/* Dashboard Header */
+.dashboard-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.dashboard-title {
+    font-size: 32px;
+    font-weight: bold;
+    color: #333;
+}
+
+/* Filter Section */
+.filter-section {
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.filter-section .col-md-4 {
+    min-width: 250px; /* Ensures filters are evenly spaced */
+}
+
+.filter-section label {
+    font-weight: 600;
+    color: #555;
+}
+
+.filter-section .form-control,
+.filter-section .form-select {
+    padding: 10px;
+    font-size: 16px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    transition: border-color 0.3s ease-in-out;
+}
+
+.filter-section .form-control:focus,
+.filter-section .form-select:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 6px rgba(0, 123, 255, 0.3);
+}
+
+/* Apply Filters Button */
+.filter-section .btn {
+    font-size: 18px;
+    padding: 12px;
+    border-radius: 8px;
+    width: 100%;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    border: none;
+    transition: all 0.3s ease-in-out;
+}
+
+.filter-section .btn:hover {
+    background: linear-gradient(135deg, #0056b3, #003f7f);
+}
+
+/* Dashboard Cards */
+.row-cols-md-5 {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 30px; /* Increased spacing for a clean look */
+    padding: 25px;
+}
+
+.order-card {
+    width: 100%;
+    min-height: 260px;
+    padding: 30px;
+    border-radius: 16px;
+    font-size: 22px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    color: white;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.order-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
+/* Background Colors */
+.bg-c-blue {
+    background: linear-gradient(135deg, #3a7bd5, #1e5799);
+}
+
+.bg-c-green {
+    background: linear-gradient(135deg, #34c759, #1e8c3f);
+}
+
+.bg-c-red {
+    background: linear-gradient(135deg, #ff3b30, #c62828);
+}
+
+.bg-c-purple {
+    background: linear-gradient(135deg, #8e44ad, #5e2d84);
+}
+
+.bg-c-orange {
+    background: linear-gradient(135deg, #ffa502, #e67e22);
+}
+
+/* Icon Styling */
+.icon-style {
+    font-size: 55px;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 10px;
+}
+
+/* Ensure Values in Cards are Visible */
+.order-card h2 {
+    font-size: 34px;
+    font-weight: bold;
+    color: white;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 992px) {
+    .order-card {
+        min-height: 220px;
+    }
+}
+
+@media (max-width: 768px) {
+    .filter-section {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .order-card {
+        max-width: 400px;
+        min-height: 220px;
+    }
+}
