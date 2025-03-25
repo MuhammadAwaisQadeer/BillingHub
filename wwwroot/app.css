@@ -84,11 +84,39 @@ h1:focus {
 }
 
 
+/*.container {
+    max-width: 1200px;
+}*/
 
+/* Table Wrapper */
+/*.table-responsive {
+    overflow-x: auto;
+    min-width: 100%;
+    display: block;
+    white-space: nowrap;
+}*/
 
-.sidebar {
-    width: 60px; /* Collapsed width */
-    height: 100vh;
+/* Table Styling */
+/*th, td {
+    min-width: 150px;
+}
+
+    td.nowrap {
+        white-space: nowrap;
+    }
+
+ @media (max-width: 768px) { 
+     th, td 
+
+ { 
+     min-width: 100px; 
+ }
+
+ }*/
+
+/*.sidebar {
+    width: 60px;*/ /* Collapsed width */
+    /*height: 100vh;
     background-color: #333;
     color: white;
     overflow: hidden;
@@ -99,8 +127,8 @@ h1:focus {
 }
 
     .sidebar:hover {
-        width: 200px; /* Expanded width */
-    }
+        width: 200px;*/ /* Expanded width */
+    /*}
 
 .nav-scrollable {
     display: flex;
@@ -123,8 +151,8 @@ h1:focus {
 
     .nav-link span {
         font-size: 20px;
-        width: 40px; /* Ensures icons are aligned */
-        text-align: center;
+        width: 40px;*/ /* Ensures icons are aligned */
+        /*text-align: center;
     }
 
 .link-text {
@@ -135,4 +163,4 @@ h1:focus {
 
 .sidebar:hover .link-text {
     opacity: 1;
-}
+}*/

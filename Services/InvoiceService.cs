@@ -77,7 +77,7 @@ namespace Client_Invoice_System.Services
             }
         }
 
-        // ✅ Updates an existing invoice.
+        // Updates an existing invoice.
         public async Task UpdateInvoiceAsync(Invoice invoice)
         {
             try
@@ -93,7 +93,7 @@ namespace Client_Invoice_System.Services
             }
         }
 
-        // ✅ Fetches an unpaid invoice for a client.
+        // Fetches an unpaid invoice for a client.
         public async Task<Invoice?> GetUnpaidInvoiceForClientAsync(int clientId)
         {
             return await _context.Invoices
@@ -102,7 +102,7 @@ namespace Client_Invoice_System.Services
                 .FirstOrDefaultAsync();
         }
 
-        // ✅ Creates a new invoice.
+        // Creates a new invoice.
         public async Task<int> CreateInvoiceAsync(int clientId)
         {
             try
@@ -207,7 +207,6 @@ namespace Client_Invoice_System.Services
                     await _context.Invoices.AddAsync(newInvoice);
                     await _context.SaveChangesAsync();
 
-                    // Mark these resources as invoiced and attach them to the invoice
                     newResources.ForEach(r =>
                     {
                         r.IsInvoiced = true;
@@ -299,7 +298,6 @@ namespace Client_Invoice_System.Services
                 if (client == null)
                     throw new Exception("Client not found!");
 
-                // Fetch the unpaid invoice with its related data
                 var unpaidInvoice = await _context.Invoices
                  .Where(i => i.ClientId == clientId && !i.IsPaid)
                  .Include(i => i.Resources)
@@ -321,13 +319,10 @@ namespace Client_Invoice_System.Services
                  .Include(r => r.OwnerProfile)
                  .ToListAsync();
 
-                // Total amount as stored in the invoice
                 decimal totalAmount = unpaidInvoice.TotalAmount;
 
-                // Get the owner profile from the client's resources
                 var ownerProfile = client.Resources.FirstOrDefault()?.OwnerProfile;
 
-                // Fallback to default payment details if no profile is found
                 if (ownerProfile == null)
                 {
                     ownerProfile = new OwnerProfile
@@ -348,7 +343,6 @@ namespace Client_Invoice_System.Services
                 }
 
 
-                // Determine culture and currency symbol
                 CultureInfo culture;
                 string currencySymbol = client?.CountryCurrency?.Symbol ?? "$"; // Default USD symbol
                 if (!string.IsNullOrEmpty(client?.CountryCurrency?.CurrencyCode))
