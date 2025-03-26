@@ -18,6 +18,12 @@ namespace Client_Invoice_System.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal TotalAmount { get; set; }
 
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal PaidAmount { get; set; } = 0;
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal RemainingAmount { get; set; } // Auto-updated from TotalAmount - PaidAmount
+
         [Required]
         public int CountryCurrencyId { get; set; }
         [ForeignKey("CountryCurrencyId")]
@@ -27,10 +33,18 @@ namespace Client_Invoice_System.Models
         public DateTime? UpdatedAt { get; set; }
 
         public string EmailStatus { get; set; } = "Not Sent";
-        public bool IsPaid { get; set; } = false;
 
-        // ✅ New: Link to Resources
-        public virtual ICollection<Resource> Resources { get; set; } = new List<Resource>();
+        public InvoiceStatus InvoiceStatuses { get; set; } = InvoiceStatus.Pending;
+        public bool IsPaid => InvoiceStatuses == InvoiceStatus.Paid;
+        // ✅ Linked resources under invoice
+        public virtual ICollection<InvoiceItem> InvoiceItems { get; set; } = new List<InvoiceItem>();
+    }
+
+    public enum InvoiceStatus
+    {
+        Pending,
+        PartiallyPaid,
+        Paid
     }
 
 }

@@ -28,44 +28,44 @@ body {
     gap: 20px;
 }
 
-.filter-section .col-md-4 {
-    min-width: 250px; /* Ensures filters are evenly spaced */
-}
+    .filter-section .col-md-4 {
+        min-width: 250px; /* Ensures filters are evenly spaced */
+    }
 
-.filter-section label {
-    font-weight: 600;
-    color: #555;
-}
+    .filter-section label {
+        font-weight: 600;
+        color: #555;
+    }
 
-.filter-section .form-control,
-.filter-section .form-select {
-    padding: 10px;
-    font-size: 16px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    transition: border-color 0.3s ease-in-out;
-}
+    .filter-section .form-control,
+    .filter-section .form-select {
+        padding: 10px;
+        font-size: 16px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        transition: border-color 0.3s ease-in-out;
+    }
 
-.filter-section .form-control:focus,
-.filter-section .form-select:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 6px rgba(0, 123, 255, 0.3);
-}
+        .filter-section .form-control:focus,
+        .filter-section .form-select:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 6px rgba(0, 123, 255, 0.3);
+        }
 
-/* Apply Filters Button */
-.filter-section .btn {
-    font-size: 18px;
-    padding: 12px;
-    border-radius: 8px;
-    width: 100%;
-    background: linear-gradient(135deg, #007bff, #0056b3);
-    border: none;
-    transition: all 0.3s ease-in-out;
-}
+    /* Apply Filters Button */
+    .filter-section .btn {
+        font-size: 18px;
+        padding: 12px;
+        border-radius: 8px;
+        width: 100%;
+        background: linear-gradient(135deg, #007bff, #0056b3);
+        border: none;
+        transition: all 0.3s ease-in-out;
+    }
 
-.filter-section .btn:hover {
-    background: linear-gradient(135deg, #0056b3, #003f7f);
-}
+        .filter-section .btn:hover {
+            background: linear-gradient(135deg, #0056b3, #003f7f);
+        }
 
 /* Dashboard Cards */
 .row-cols-md-5 {
@@ -92,10 +92,10 @@ body {
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-.order-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-}
+    .order-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    }
 
 /* Background Colors */
 .bg-c-blue {

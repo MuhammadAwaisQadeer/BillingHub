@@ -34,7 +34,7 @@
         </div>
     </div>
     <!-- Contract Table -->
-    <div class="card p-3 shadow-lg rounded-4 bg-white">
+    <div class="card p-3 shadow-lg rounded-4 bg-white div-responsive">
         @if (pagedResources != null && pagedResources.Any())
         {
             <div class="table-responsive">
@@ -125,29 +125,24 @@
     </div>
 }
 <style>
-    /* Page Container */
-    .container {
-        max-width: 1200px;
-    }
-
-    /* Table Wrapper */
     .table-responsive {
         overflow-x: auto;
         min-width: 100%;
         display: block;
         white-space: nowrap;
+        overflow-y: auto;
+        max-height: 70vh;
     }
-
-    /* Table Styling */
+     .div-responsive{max-width: calc(100vw - 320px);
+  }
     th, td {
         min-width: 150px;
     }
 
-        td.nowrap {
-            white-space: nowrap;
-        }
+    td.nowrap {
+        white-space: nowrap;
+    }
 
-    /* Modal Styling */
     .modal-overlay {
         position: fixed;
         top: 0;
@@ -170,37 +165,15 @@
         max-width: 400px;
     }
 
-    /* Buttons */
-    .btn-sm {
-        min-width: 70px;
-    }
-
-    /* Center Align Table Data */
     tbody td {
         text-align: center;
         vertical-align: middle;
     }
 
-    /* Keep Headers Left-Aligned */
     thead th {
         text-align: center;
     }
-    /* Responsive Adjustments */
-    /* media (max-width: 768px) { */
-    /*     th, td */
-
-    /* { */
-    /*     min-width: 120px; */
-    /* } */
-
-    /* .btn-sm { */
-    /*     width: 100%; */
-    /* } */
-
-    /* } */
-    </style>
-
-
+</style>
 @code {
     private List<Resource> ResourcesList = new();
     private List<Resource> filteredResources = new();

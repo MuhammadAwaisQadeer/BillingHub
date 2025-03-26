@@ -13,6 +13,7 @@
 </div>
 <h3 class="mb-4 fw-bold">Invoice Management</h3>
 
+<!-- Client Selection and Generate Invoice Button -->
 <div class="d-flex align-items-center gap-2 mb-3">
     <select class="form-control w-25" @bind="SelectedClientId">
         <option value="">-- Select Client --</option>
@@ -26,18 +27,27 @@
     <button class="btn btn-primary" @onclick="GenerateInvoice">Generate Invoice</button>
 </div>
 
+<!-- Date Range Filters using Bootstrap CDatePicker components --> 
+ <div class="row mb-3"> 
+     <FormColumn sm="12" md="4" lg="3" xl="3"> 
+      <CDatePicker control="@datePickerControl" name="startDate" isEnable="true"
+    placeholder="Enter start date" label="Start Date"
+    Value="@StartDate" ValueChanged="OnStartDateChanged" />
+     </FormColumn> 
+     <FormColumn sm="12" md="4" lg="3" xl="3"> 
+        <CDatePicker control="@datePickerControl" name="endDate" isEnable="true"
+    placeholder="Enter end date" label="End Date"
+    Value="@EndDate" ValueChanged="OnEndDateChanged" />
+     </FormColumn> 
+ </div>
 
 <!-- Invoice Table -->
 <div class="card p-3 shadow-lg rounded-4 bg-white">
-
-    <!-- Search Filter -->
-
+    <!-- Search and Filter Controls -->
     <div class="row mb-3 align-items-center">
-
         <div class="col-12 col-md-6">
             <h4 class="mb-3 fw-bold">Existing Invoices</h4>
         </div>
-
         <div class="col-12 col-md-6">
             <div class="d-flex flex-wrap justify-content-end gap-2">
                 <select class="form-control w-auto" @onchange="GetInvoiceByStatus">
@@ -45,13 +55,11 @@
                     <option value="true">Paid</option>
                     <option value="false">Unpaid</option>
                 </select>
-
                 <select class="form-control w-auto" @onchange="GetInvoiceByEmailStatus">
                     <option value="">All</option>
                     <option value="Sent">Sent</option>
                     <option value="Not Sent">Not Sent</option>
                 </select>
-
                 <div class="input-group shadow rounded" style="max-width: 300px;">
                     <input type="text" class="form-control form-control-sm border-primary rounded-start" placeholder="🔍 Search..." @bind="searchQuery" @oninput="FilterInvoices" />
                     <button class="btn btn-primary fw-bold px-3" @onclick="FilterInvoices">
@@ -60,13 +68,11 @@
                 </div>
             </div>
         </div>
-
     </div>
-
 
     @if (pagedInvoices != null && pagedInvoices.Any())
     {
-        <div class="table-responsive">
+        <div class="table-responsive div-responsive">
             <table class="table table-striped">
                 <thead>
                     <tr>
@@ -88,8 +94,8 @@
                             <td>@(invoice.CountryCurrency?.Symbol) @invoice.TotalAmount.ToString("N2")</td>
                             <td>@(invoice.CountryCurrency?.CurrencyName)</td>
                             <td>
-                                <span class="badge @(invoice.IsPaid ? "bg-success" : "bg-danger")">
-                                    @(invoice.IsPaid ? "Paid" : "Unpaid")
+                                <span class="badge @(invoice.InvoiceStatuses == InvoiceStatus.Paid ? "bg-success" : "bg-danger")">
+                                    @(invoice.InvoiceStatuses == InvoiceStatus.Paid ? "Paid" : "Unpaid")
                                 </span>
                             </td>
                             <td>
@@ -104,7 +110,7 @@
                                 <button class="btn btn-sm btn-success me-2" @onclick="() => ShowSendEmailModal(invoice.ClientId, invoice.Client?.Name)">
                                     <i class="bi bi-envelope me-1"></i> Send Email
                                 </button>
-                                <button class="btn btn-sm btn-warning me-2" @onclick="() => ShowMarkAsPaidModal(invoice.InvoiceId, invoice.Client?.Name)" disabled="@invoice.IsPaid">
+                                <button class="btn btn-sm btn-warning me-2" @onclick="() => ShowMarkAsPaidModal(invoice.InvoiceId, invoice.Client?.Name)" disabled="@((invoice.InvoiceStatuses == InvoiceStatus.Paid))">
                                     <i class="bi bi-cash-stack me-1"></i> Mark as Paid
                                 </button>
                                 <button class="btn btn-sm btn-danger" @onclick="() => ShowDeleteInvoiceModal(invoice.InvoiceId, invoice.Client?.Name)">
@@ -140,6 +146,43 @@
         <p class="text-center text-muted">No invoices found.</p>
     }
 </div>
+@if (isMarkAsPaidModalVisible)
+{
+    <div class="modal-overlay div-responsive">
+        <div class="delete-modal">
+            <p class="fw-bold text-center">
+                Mark invoice for <span class="text-success">@modalClientName</span> as Paid?
+            </p>
+
+            <!-- Total Amount -->
+            <div class="mb-3">
+                <label class="form-label fw-bold">Total Amount:</label>
+                <input type="number" class="form-control" value="@TotalAmount" disabled />
+            </div>
+
+            <!-- Paid Amount -->
+            <div class="mb-3">
+                <label class="form-label fw-bold">Paid Amount:</label>
+                <input type="number" class="form-control" @bind="PaymentAmount" step="0.01" />
+            </div>
+
+            <!-- Remaining Amount (Auto-calculated) -->
+            <div class="mb-3">
+                <label class="form-label fw-bold">Remaining Amount:</label>
+                <input type="number" class="form-control" value="@RemainingAmount" disabled />
+            </div>
+
+            <div class="d-flex justify-content-center gap-3">
+                <button class="btn btn-warning d-flex align-items-center" @onclick="ConfirmMarkAsPaid">
+                    <i class="bi bi-cash-stack me-1"></i> Yes, Mark as Paid
+                </button>
+                <button class="btn btn-secondary d-flex align-items-center" @onclick="CancelMarkAsPaid">
+                    <i class="bi bi-x-circle me-1"></i> Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+}
 
 <!-- Send Email Confirmation Modal -->
 @if (isSendEmailModalVisible)
@@ -159,23 +202,23 @@
     </div>
 }
 
-<!-- Mark as Paid Confirmation Modal -->
-@if (isMarkAsPaidModalVisible)
-{
-    <div class="modal-overlay">
-        <div class="delete-modal">
-            <p class="fw-bold">Mark invoice for <span class="text-success">@modalClientName</span> as Paid?</p>
-            <div class="d-flex justify-content-center gap-3">
-                <button class="btn btn-warning" @onclick="ConfirmMarkAsPaid">
-                    <i class="bi bi-cash-stack me-1"></i> Yes, Mark as Paid
-                </button>
-                <button class="btn btn-secondary" @onclick="CancelMarkAsPaid">
-                    <i class="bi bi-x-circle me-1"></i> Cancel
-                </button>
-            </div>
-        </div>
-    </div>
-}
+@* <!-- Mark as Paid Confirmation Modal --> *@
+@* @if (isMarkAsPaidModalVisible) *@
+@* { *@
+@*     <div class="modal-overlay"> *@
+@*         <div class="delete-modal"> *@
+@*             <p class="fw-bold">Mark invoice for <span class="text-success">@modalClientName</span> as Paid?</p> *@
+@*             <div class="d-flex justify-content-center gap-3"> *@
+@*                 <button class="btn btn-warning" @onclick="ConfirmMarkAsPaid"> *@
+@*                     <i class="bi bi-cash-stack me-1"></i> Yes, Mark as Paid *@
+@*                 </button> *@
+@*                 <button class="btn btn-secondary" @onclick="CancelMarkAsPaid"> *@
+@*                     <i class="bi bi-x-circle me-1"></i> Cancel *@
+@*                 </button> *@
+@*             </div> *@
+@*         </div> *@
+@*     </div> *@
+@* } *@
 
 <!-- Delete Invoice Confirmation Modal -->
 @if (isDeleteInvoiceModalVisible)
@@ -205,6 +248,10 @@
         min-width: 100%;
         display: block;
         white-space: nowrap;
+    }
+
+    .div-responsive {
+        max-width: calc(100vw - 350px);
     }
 
     th, td {
@@ -250,38 +297,58 @@
         text-align: center;
     }
 </style>
-
 @code {
+    // Data lists and filter fields.
     private List<Client> Clients = new();
     private List<Invoice> Invoices = new();
     private List<Invoice> filteredInvoices = new();
     private List<Invoice> pagedInvoices = new();
-    private int SelectedClientId;
     private List<Invoice> AllInvoices = new();
+    private int SelectedClientId;
     private string SelectedStatus = "";
     private string SelectedEmailStatus = "";
-    // Modal control fields
+    private string searchQuery = "";
+    // private DateTime? StartDate { get; set; }
+    // private DateTime? EndDate { get; set; }
+
+    // Date range filtering.
+    private DateTime StartDate { get; set; } = DateTime.UtcNow.AddMonths(-1);
+    private DateTime EndDate { get; set; } = DateTime.UtcNow;
+    // Assuming you have a control for CDatePicker (e.g., from your component library)
+    private object datePickerControl = new object();
+    private async Task OnStartDateChanged(DateTime newValue)
+    {
+        StartDate = newValue;
+    }
+
+    private async Task OnEndDateChanged(DateTime newValue)
+    {
+        EndDate = newValue;
+    }
+
+    // Pagination.
+    private int CurrentPage = 1;
+    private int PageSize = 5;
+    private int TotalInvoices => filteredInvoices.Count;
+    private int TotalPages => (int)Math.Ceiling((double)TotalInvoices / PageSize);
+    private bool CanGoPrevious => CurrentPage > 1;
+    private bool CanGoNext => CurrentPage < TotalPages;
+
+    // Modal control fields.
     private bool isSendEmailModalVisible = false;
     private bool isMarkAsPaidModalVisible = false;
     private bool isDeleteInvoiceModalVisible = false;
     private int modalInvoiceId;
     private int modalClientId;
-    private string modalClientName;
-
-    private int CurrentPage = 1;
-    private int PageSize = 5;
-    private int totalInvoices => filteredInvoices.Count;
-    private int TotalPages => (int)Math.Ceiling((double)totalInvoices / PageSize);
-    private bool CanGoPrevious => CurrentPage > 1;
-    private bool CanGoNext => CurrentPage < TotalPages;
-    private string searchQuery = "";
+    private string modalClientName = "";
+    private decimal TotalAmount { get; set; } = 0;  
+    private decimal PaymentAmount { get; set; } = 0;
+    private decimal RemainingAmount => TotalAmount - PaymentAmount;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            Clients = (await ClientRepo.GetAllAsync(true)).ToList();
-            Invoices = (await InvoiceService.GetAllInvoicesAsync()).ToList();
             Clients = (await ClientRepo.GetAllAsync(true)).ToList();
             AllInvoices = (await InvoiceService.GetAllInvoicesAsync()).ToList();
             Invoices = new List<Invoice>(AllInvoices);
@@ -303,11 +370,10 @@
                 return;
             }
 
-            // Check if there is an existing unpaid invoice for the client
+            // Check if an unpaid invoice exists.
             var existingInvoice = await InvoiceService.GetUnpaidInvoiceForClientAsync(SelectedClientId);
             if (existingInvoice != null)
             {
-                // Calculate the additional amount based on new resource consumption
                 decimal additionalAmount = await InvoiceService.CalculateAdditionalAmountAsync(SelectedClientId);
                 existingInvoice.TotalAmount += additionalAmount;
                 await InvoiceService.UpdateInvoiceAsync(existingInvoice);
@@ -319,7 +385,7 @@
                 Console.WriteLine("New invoice generated.");
             }
 
-            // Refresh the invoice list
+            // Refresh the invoice list.
             Invoices = (await InvoiceService.GetAllInvoicesAsync()).ToList();
             FilterInvoices();
         }
@@ -338,7 +404,8 @@
                 Console.WriteLine("Invalid Client ID");
                 return;
             }
-            byte[] pdfData = await InvoiceService.GenerateInvoicePdfAsync(clientId);
+            // Pass the selected date range for PDF generation.
+            byte[] pdfData = await InvoiceService.GenerateInvoicePdfAsync(clientId, StartDate, EndDate);
             var fileName = $"Invoice_{clientId}.pdf";
             await JS.InvokeVoidAsync("downloadFileFromStream", fileName, new DotNetStreamReference(new MemoryStream(pdfData)), "application/pdf");
         }
@@ -364,14 +431,20 @@
     {
         try
         {
-            bool emailSent = await InvoiceService.SendInvoiceToClientAsync(modalClientId);
-            Console.WriteLine(emailSent ? "Invoice email sent." : "Failed to send invoice email.");
+            // Define the date range for the invoice (you might want to use a UI-provided date range)
+            DateTime startDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1); // Start of the month
+            DateTime endDate = DateTime.Now; // Today's date
+
+            bool emailSent = await InvoiceService.SendInvoiceToClientAsync(modalClientId, startDate, endDate);
+            Console.WriteLine(emailSent ? "📧 Invoice email sent successfully." : "❌ Failed to send invoice email.");
+
+            // Refresh invoice list
             Invoices = (await InvoiceService.GetAllInvoicesAsync()).ToList();
             FilterInvoices();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error sending invoice: {ex.Message}");
+            Console.WriteLine($"❌ Error sending invoice: {ex.Message}");
         }
         finally
         {
@@ -379,12 +452,26 @@
         }
     }
 
+
     private void ShowMarkAsPaidModal(int invoiceId, string clientName)
     {
-        modalInvoiceId = invoiceId;
-        modalClientName = clientName;
+        var invoice = Invoices.FirstOrDefault(i => i.InvoiceId == invoiceId);
+        if (invoice != null)
+        {
+            modalInvoiceId = invoice.InvoiceId;
+            modalClientName = clientName;
+            TotalAmount = invoice.TotalAmount;  // Ensure this is set
+            PaymentAmount = invoice.PaidAmount; // Pre-fill with already paid amount
+        }
+        else
+        {
+            TotalAmount = 0;
+            PaymentAmount = 0;
+        }
+
         isMarkAsPaidModalVisible = true;
     }
+
 
     private void CancelMarkAsPaid()
     {
@@ -395,7 +482,12 @@
     {
         try
         {
-            await InvoiceService.MarkInvoiceAsPaidAsync(modalInvoiceId);
+            if (PaymentAmount <= 0)
+            {
+                Console.WriteLine("Invalid payment amount.");
+                return;
+            }
+            await InvoiceService.MarkInvoiceAsPaidAsync(modalInvoiceId, PaymentAmount);
             Invoices = (await InvoiceService.GetAllInvoicesAsync()).ToList();
             FilterInvoices();
         }
@@ -465,12 +557,10 @@
     private void PreviousPage() { if (CanGoPrevious) { CurrentPage--; LoadPagedInvoices(); } }
     private void GoToPage(int page) { if (page >= 1 && page <= TotalPages) { CurrentPage = page; LoadPagedInvoices(); } }
 
-    private int TotalInvoices => filteredInvoices.Count;
+    // private int TotalInvoices => filteredInvoices.Count;
     // private int TotalPages => (int)Math.Ceiling((double)TotalInvoices / PageSize);
     // private bool CanGoPrevious => CurrentPage > 1;
     // private bool CanGoNext => CurrentPage < TotalPages;
-
-
 
     private async Task GetInvoiceByStatus(ChangeEventArgs e)
     {

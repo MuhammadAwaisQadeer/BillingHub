@@ -32,7 +32,7 @@
     </div>
 
     <!-- Employee Table -->
-    <div class="card p-3 shadow-lg rounded-4 bg-white">
+    <div class="card p-3 shadow-lg rounded-4 bg-white div-responsive">
           <div class="table-responsive">
                 <table class="table table-striped">
                     <thead>
@@ -112,8 +112,13 @@
         min-width: 100%;
         display: block;
         white-space: nowrap;
+        overflow-y: auto;
+        max-height: 70vh;
     }
 
+    .div-responsive {
+        max-width: calc(100vw - 320px);
+    }
     /* Table Styling */
     th, td {
         min-width: 150px;
@@ -160,17 +165,7 @@
     thead th {
         text-align: center;
     }
-    /* Responsive Adjustments */
-    /* media (max-width: 768px) { */
-    /*     th, td */
-
-    /* { */
-    /*     min-width: 100px; */
-    /* }*/
-
-        /* }*/
-    </style> 
-
+</style>
 @code {
     private List<Employee> employees = new();
     private bool isDeleteModalVisible = false;

@@ -4,7 +4,6 @@ using Client_Invoice_System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -12,11 +11,9 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Client_Invoice_System.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250324125210_addedinvoice")]
-    partial class addedinvoice
+    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -127,9 +124,7 @@ namespace Client_Invoice_System.Migrations
 
                     b.Property<string>("ClientIdentifier")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("nvarchar(max)")
-                        .HasDefaultValueSql("NEWID()");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("CountryCurrencyId")
                         .HasColumnType("int");
@@ -151,10 +146,8 @@ namespace Client_Invoice_System.Migrations
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(12)
-                        .HasColumnType("nvarchar(12)")
-                        .HasDefaultValue("N/A");
+                        .HasColumnType("nvarchar(12)");
 
                     b.HasKey("ClientId");
 
@@ -317,8 +310,16 @@ namespace Client_Invoice_System.Migrations
                     b.Property<DateTime>("InvoiceDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<bool>("IsPaid")
-                        .HasColumnType("bit");
+                    b.Property<int>("InvoiceStatuses")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PaidAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("RemainingAmount")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("decimal(18,2)")
+                        .HasComputedColumnSql("[TotalAmount] - [PaidAmount]");
 
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("decimal(18,2)");
@@ -333,6 +334,35 @@ namespace Client_Invoice_System.Migrations
                     b.HasIndex("CountryCurrencyId");
 
                     b.ToTable("Invoices");
+                });
+
+            modelBuilder.Entity("Client_Invoice_System.Models.InvoiceItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ConsumedHours")
+                        .HasColumnType("int");
+
+                    b.Property<int>("InvoiceId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("RatePerHour")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("ResourceId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.HasIndex("ResourceId");
+
+                    b.ToTable("InvoiceItems");
                 });
 
             modelBuilder.Entity("Client_Invoice_System.Models.OwnerProfile", b =>
@@ -421,14 +451,14 @@ namespace Client_Invoice_System.Migrations
                     b.Property<int>("EmployeeId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("InvoiceId")
-                        .HasColumnType("int");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsInvoiced")
                         .HasColumnType("bit");
+
+                    b.Property<int>("OwnerProfileId")
+                        .HasColumnType("int");
 
                     b.Property<string>("ResourceName")
                         .IsRequired()
@@ -443,7 +473,7 @@ namespace Client_Invoice_System.Migrations
 
                     b.HasIndex("EmployeeId");
 
-                    b.HasIndex("InvoiceId");
+                    b.HasIndex("OwnerProfileId");
 
                     b.ToTable("Resources");
                 });
@@ -641,6 +671,25 @@ namespace Client_Invoice_System.Migrations
                     b.Navigation("CountryCurrency");
                 });
 
+            modelBuilder.Entity("Client_Invoice_System.Models.InvoiceItem", b =>
+                {
+                    b.HasOne("Client_Invoice_System.Models.Invoice", "Invoice")
+                        .WithMany("InvoiceItems")
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Client_Invoice_System.Models.Resource", "Resource")
+                        .WithMany()
+                        .HasForeignKey("ResourceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Invoice");
+
+                    b.Navigation("Resource");
+                });
+
             modelBuilder.Entity("Client_Invoice_System.Models.OwnerProfile", b =>
                 {
                     b.HasOne("Client_Invoice_System.Models.CountryCurrency", "CountryCurrency")
@@ -666,15 +715,17 @@ namespace Client_Invoice_System.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Client_Invoice_System.Models.Invoice", "Invoice")
+                    b.HasOne("Client_Invoice_System.Models.OwnerProfile", "OwnerProfile")
                         .WithMany("Resources")
-                        .HasForeignKey("InvoiceId");
+                        .HasForeignKey("OwnerProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Client");
 
                     b.Navigation("Employee");
 
-                    b.Navigation("Invoice");
+                    b.Navigation("OwnerProfile");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -744,6 +795,11 @@ namespace Client_Invoice_System.Migrations
                 });
 
             modelBuilder.Entity("Client_Invoice_System.Models.Invoice", b =>
+                {
+                    b.Navigation("InvoiceItems");
+                });
+
+            modelBuilder.Entity("Client_Invoice_System.Models.OwnerProfile", b =>
                 {
                     b.Navigation("Resources");
                 });

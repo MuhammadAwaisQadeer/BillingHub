@@ -12,16 +12,16 @@
 <div class="">
     <!-- Page Header -->
     <div class="row mb-3 align-items-center">
-        <div class="col-md-6">
+        <div class=" col-12 col-md-6">
             <h3 class="text-primary">Owner Profiles (@(Owners?.Count ?? 0))</h3>
         </div>
-        <div class="col-md-6 d-flex justify-content-end">
+        <div class="col-md-6 d-flex justify-content-md-end mt-2 mt-md-0">
             <button class="btn btn-primary w-30 w-md-auto" @onclick="AddOwnerProfile"><i class="bi bi-plus-circle me-1"></i>Add New Owner Profile</button>
         </div>
     </div>
 
     <!-- Owner Table -->
-    <div class="card p-3 shadow-lg rounded-4 bg-white">
+    <div class="card p-3 shadow-lg rounded-4 bg-white div-responsive">
         @if (Owners != null && Owners.Any())
         {
             <div class="table-responsive">
@@ -90,26 +90,29 @@
 }
 
 <style>
-    /* Page Container */
-    .container {
-        max-width: 1200px;
+    .container-fluid {
+        /* max-width: 1200px; */
+        margin: auto;
     }
 
-    /* Table Wrapper */
     .table-responsive {
-        overflow-x: auto;
+        /* overflow-x: auto; */
         min-width: 100%;
         display: block;
         white-space: nowrap;
     }
 
-    /* Center Align Table Data */
+    .div-responsive {
+        max-width: calc(100vw - 330px);
+    }
+
     tbody td {
         text-align: center;
         vertical-align: middle;
     }
 
-    /* Keep Headers Left-Aligned */
+    .
+
     thead th {
         text-align: center;
     }
@@ -121,7 +124,7 @@
         td.nowrap {
             white-space: nowrap;
         }
-    /* Modal Styling */
+
     .modal-overlay {
         position: fixed;
         top: 0;
@@ -144,24 +147,9 @@
         max-width: 400px;
     }
 
-    /* Buttons */
     .btn-sm {
         min-width: 70px;
     }
-
-    /* Responsive Adjustments */
-    /* media (max-width: 768px) { */
-    /*     th, td */
-
-    /* { */
-    /*     min-width: 120px; */
-    /* } */
-
-    /* .btn-sm { */
-    /*     width: 100%; */
-    /* } */
-
-    /* } */
     </style>
 
 @code {
