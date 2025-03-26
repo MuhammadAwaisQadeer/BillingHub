@@ -1,22 +1,33 @@
 ﻿@page "/owner-profile"
 @rendermode InteractiveServer
+@using Client_Invoice_System.Helpers
 @using Client_Invoice_System.Models
 @using Client_Invoice_System.Repositories
 @using Client_Invoice_System.Repository
 @inject OwnerRepository OwnerRepository
 @inject NavigationManager Navigation
 @using Client_Invoice_System.Components
+@inject IPaginationService<OwnerProfile> PaginationService
+
 <div class="d-flex align-items-center">
     <Breadcrumb />
 </div>
 <div class="">
+    <div class="col-12 col-md-6">
+        <h3 class="text-dark">Owner Profiles (@(Owners?.Count ?? 0))</h3>
+    </div>
     <!-- Page Header -->
     <div class="row mb-3 align-items-center">
-        <div class=" col-12 col-md-6">
-            <h3 class="text-primary">Owner Profiles (@(Owners?.Count ?? 0))</h3>
+        <div class="col-md-6">
+            <div class="input-group shadow rounded" style="max-width: 300px;">
+                <input type="text" class="form-control form-control-sm border-primary rounded-start" placeholder="🔍 Search..." @bind="searchQuery" @oninput="FilterOwners">
+                <button class="btn btn-primary fw-bold px-3" @onclick="FilterOwners"><i class="bi bi-search"></i></button>
+            </div>
         </div>
         <div class="col-md-6 d-flex justify-content-md-end mt-2 mt-md-0">
-            <button class="btn btn-primary w-30 w-md-auto" @onclick="AddOwnerProfile"><i class="bi bi-plus-circle me-1"></i>Add New Owner Profile</button>
+            <button class="btn btn-primary w-30 w-md-auto" @onclick="AddOwnerProfile">
+                <i class="bi bi-plus-circle me-1"></i>Add New Owner Profile
+            </button>
         </div>
     </div>
 
@@ -26,8 +37,7 @@
         {
             <div class="table-responsive">
                 <table class="table table-striped text-center">
-                    @* Centered inner table data *@
-                    <thead class="">
+                    <thead>
                         <tr>
                             <th class="text-start"><i class="bi bi-person-fill"></i> Owner Name</th>
                             <th><i class="bi bi-envelope"></i> Billing Email</th>
@@ -39,13 +49,12 @@
                             <th><i class="bi bi-currency-exchange"></i> Currency</th>
                             <th><i class="bi bi-gear"></i> Actions</th>
                         </tr>
-
                     </thead>
                     <tbody>
-                        @foreach (var owner in Owners)
+                        @foreach (var owner in pagedOwnerProfile)
                         {
                             <tr>
-                                <td class="text-start">@owner.OwnerName</td>  @* Keep left-aligned for readability *@
+                                <td class="text-start">@owner.OwnerName</td>
                                 <td>@owner.BillingEmail</td>
                                 <td>@owner.PhoneNumber</td>
                                 <td>@owner.BillingAddress</td>
@@ -53,19 +62,49 @@
                                 <td>@owner.AccountNumber</td>
                                 <td>@(owner.CountryCurrency?.CountryName ?? "N/A")</td>
                                 <td>
-                                    @(owner.CustomCurrency?.Trim() != ""
-                                        ? owner.CustomCurrency
-                                        : owner.CountryCurrency?.CurrencyName ?? "N/A")
+                                    @(string.IsNullOrWhiteSpace(owner.CustomCurrency)
+                                        ? (owner.CountryCurrency?.CurrencyName ?? "N/A")
+                                        : owner.CustomCurrency)
                                     (@(owner.CountryCurrency?.CurrencyCode ?? "-") - @(owner.CountryCurrency?.Symbol ?? "-"))
                                 </td>
                                 <td class="nowrap">
-                                    <button class="btn btn-sm btn-warning me-2" @onclick="() => EditOwnerProfile(owner.Id)"><i class="bi bi-pencil-square me-1"></i>Edit</button>
-                                    <button class="btn btn-sm btn-danger" @onclick="() => ShowDeleteModal(owner.Id, owner.OwnerName)"><i class="bi bi-trash me-1"></i> Delete</button>
+                                    <button class="btn btn-sm btn-warning me-2" @onclick="() => EditOwnerProfile(owner.Id)">
+                                        <i class="bi bi-pencil-square me-1"></i>Edit
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => ShowDeleteModal(owner.Id, owner.OwnerName)">
+                                        <i class="bi bi-trash me-1"></i> Delete
+                                    </button>
                                 </td>
                             </tr>
                         }
                     </tbody>
                 </table>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-center mt-3">
+                <ul class="pagination mb-0">
+                    <li class="page-item @(CanGoPrevious ? "" : "disabled")">
+                        <a class="page-link shadow-sm" href="javascript:void(0);" @onclick="PreviousPage">«</a>
+                    </li>
+                    @for (int i = 1; i <= totalPages; i++)
+                    {
+                        <li class="page-item @(i == currentPage ? "active" : "")">
+                            <a class="page-link fw-bold shadow-sm" href="javascript:void(0);" @onclick="() => ChangePage(i)">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(CanGoNext ? "" : "disabled")">
+                        <a class="page-link shadow-sm" href="javascript:void(0);" @onclick="NextPage">»</a>
+                    </li>
+                </ul>
+                <div class="d-flex align-items-center ms-3">
+                    @* <label class="me-2 fw-bold">Page Size:</label> *@
+                    <select class="form-select w-auto text-center shadow-sm border-primary" @onchange="SetPageSize">
+                        @foreach (var size in new int[] { 5, 10, 15, 20, 50, 100 })
+                        {
+                            <option value="@size" selected="@(size == pageSize)">Show @size</option>
+                        }
+                    </select>
+                </div>
             </div>
         }
         else
@@ -82,8 +121,12 @@
         <div class="delete-modal">
             <p class="fw-bold">Are you sure you want to delete <span class="text-danger">@ownerToDeleteName</span>?</p>
             <div class="d-flex flex-column flex-md-row justify-content-center gap-3">
-                <button class="btn btn-danger w-100 w-md-auto" @onclick="ConfirmDelete"> <i class="bi bi-trash"></i> Yes, Delete</button>
-                <button class="btn btn-secondary w-100 w-md-auto" @onclick="CancelDelete"><i class="bi bi-x-circle"></i>Cancel</button>
+                <button class="btn btn-danger w-100 w-md-auto" @onclick="ConfirmDelete">
+                    <i class="bi bi-trash"></i> Yes, Delete
+                </button>
+                <button class="btn btn-secondary w-100 w-md-auto" @onclick="CancelDelete">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </button>
             </div>
         </div>
     </div>
@@ -91,12 +134,10 @@
 
 <style>
     .container-fluid {
-        /* max-width: 1200px; */
         margin: auto;
     }
 
     .table-responsive {
-        /* overflow-x: auto; */
         min-width: 100%;
         display: block;
         white-space: nowrap;
@@ -106,15 +147,9 @@
         max-width: calc(100vw - 330px);
     }
 
-    tbody td {
+    tbody td, thead th {
         text-align: center;
         vertical-align: middle;
-    }
-
-    .
-
-    thead th {
-        text-align: center;
     }
 
     th, td {
@@ -150,19 +185,28 @@
     .btn-sm {
         min-width: 70px;
     }
-    </style>
+</style>
 
 @code {
     private List<OwnerProfile> Owners = new();
+    private List<OwnerProfile> filteredOwners = new();
+    private List<OwnerProfile> pagedOwnerProfile = new();
     private bool isDeleteModalVisible = false;
     private int ownerToDelete;
     private string ownerToDeleteName;
+    private int totalRecords;
+    private int totalPages;
+    private int currentPage = 1;
+    private int pageSize = 5;
+    private string searchQuery = "";
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
             Owners = (await OwnerRepository.GetAllOwnerProfilesAsync()).ToList();
+            PaginationService.SetPageSize(pageSize);
+            await LoadOwnerProfile();
         }
         catch (Exception ex)
         {
@@ -198,6 +242,7 @@
         {
             await OwnerRepository.DeleteOwnerProfileAsync(ownerToDelete);
             Owners = (await OwnerRepository.GetAllOwnerProfilesAsync()).ToList(); // Refresh list
+            await LoadOwnerProfile();
         }
         catch (Exception ex)
         {
@@ -208,4 +253,76 @@
             isDeleteModalVisible = false;
         }
     }
+
+    private async Task LoadOwnerProfile()
+    {
+        var filteredData = string.IsNullOrWhiteSpace(searchQuery)
+            ? Owners
+            : Owners.Where(o => o.OwnerName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        var result = await PaginationService.GetPagedDataAsync(filteredData.AsQueryable(), currentPage);
+        pagedOwnerProfile = result.PagedData;
+        totalRecords = result.TotalCount;
+        totalPages = result.TotalPages;
+    }
+
+    private async Task SetPageSize(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newSize))
+        {
+            pageSize = newSize;
+            PaginationService.SetPageSize(pageSize);
+            currentPage = 1;
+            await LoadOwnerProfile();
+        }
+    }
+
+    private async Task PreviousPage()
+    {
+        if (CanGoPrevious)
+        {
+            currentPage--;
+            await LoadOwnerProfile();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (CanGoNext)
+        {
+            currentPage++;
+            await LoadOwnerProfile();
+        }
+    }
+
+    private async Task ChangePage(int page)
+    {
+        if (page >= 1 && page <= totalPages)
+        {
+            currentPage = page;
+            await LoadOwnerProfile();
+        }
+    }
+    private async Task FilterOwners()
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            filteredOwners = new List<OwnerProfile>(Owners);
+        }
+        else
+        {
+            filteredOwners = Owners
+                .Where(o => o.OwnerName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                            o.BillingEmail.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                            o.PhoneNumber.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                            o.BillingAddress.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                            o.BankName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+        currentPage = 1;
+        await LoadOwnerProfile();
+    }
+
+    private bool CanGoPrevious => currentPage > 1;
+    private bool CanGoNext => currentPage < totalPages;
 }

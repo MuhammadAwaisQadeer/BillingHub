@@ -31,6 +31,7 @@ builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<ActiveClientRepository>();
 builder.Services.AddScoped<OwnerRepository>();
 builder.Services.AddScoped<CountryCurrencyRepository>();
+builder.Services.AddScoped(typeof(IPaginationService<>), typeof(PaginationService<>));
 
 builder.Services.AddAuthentication(options =>
     {

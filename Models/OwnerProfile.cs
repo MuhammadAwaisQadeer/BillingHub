@@ -26,7 +26,7 @@ namespace Client_Invoice_System.Models
         public string? CustomCurrency { get; set; }
         [Required(ErrorMessage = "Phone Number is required")]
         [StringLength(13, ErrorMessage = "Phone number cannot exceed 13 characters.")]
-        [RegularExpression(@"^\+92\d{10}$", ErrorMessage = "Phone number must be in the format +92XXXXXXXXXX")]
+        //[RegularExpression(@"^\+92\d{10}$", ErrorMessage = "Phone number must be in the format +92XXXXXXXXXX")]
         public string PhoneNumber { get; set; }
         [Required(ErrorMessage = "Billing Address is Required")]
         public string BillingAddress { get; set; }
