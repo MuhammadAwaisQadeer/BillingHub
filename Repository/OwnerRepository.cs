@@ -18,9 +18,10 @@ namespace Client_Invoice_System.Repository
         public async Task<IEnumerable<OwnerProfile>> GetAllOwnerProfilesAsync()
         {
             using var context = _contextFactory.CreateDbContext();
-            return await context.Set<OwnerProfile>()
+            var owners = await context.Set<OwnerProfile>().Include(o => o.CountryCurrency)
                                 .AsNoTracking()
                                 .ToListAsync();
+            return owners;
         }
 
         // Alternative method to get all owners (if needed)

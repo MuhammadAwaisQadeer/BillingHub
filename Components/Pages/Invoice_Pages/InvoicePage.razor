@@ -55,7 +55,8 @@
                 <select class="form-control w-auto" @onchange="GetInvoiceByStatus">
                     <option value="">All</option>
                     <option value="true">Paid</option>
-                    <option value="false">Unpaid</option>
+                    <option value="Partial">Partially Paid</option>
+                    <option value="Unpaid">Unpaid</option>
                 </select>
                 <select class="form-control w-auto" @onchange="GetInvoiceByEmailStatus">
                     <option value="">All</option>
@@ -78,13 +79,14 @@
             <table class="table table-striped">
                 <thead>
                     <tr>
-                        <th><i class="bi bi-person"></i> Client</th>
-                        <th><i class="bi bi-calendar"></i> Invoice Date</th>
-                        <th><i class="bi bi-currency-dollar"></i> Total Amount</th>
-                        <th><i class="bi bi-currency-exchange"></i> Currency</th>
-                        <th><i class="bi bi-info-circle"></i> Status</th>
-                        <th><i class="bi bi-envelope"></i> Email Status</th>
-                        <th><i class="bi bi-gear"></i> Actions</th>
+                        <th>Client</th>
+                        <th>Invoice Date</th>
+                        <th>Total Amount</th>
+                        <th>Remaining Amount</th>
+                        <th>Currency</th>
+                        <th>Status</th>
+                        <th>Email Status</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -94,10 +96,11 @@
                             <td>@(invoice.Client?.Name ?? "Unknown")</td>
                             <td>@invoice.InvoiceDate.ToShortDateString()</td>
                             <td>@(invoice.CountryCurrency?.Symbol) @invoice.TotalAmount.ToString("N2")</td>
+                            <td>@(invoice.CountryCurrency?.Symbol) @invoice.RemainingAmount.ToString("N2")</td>
                             <td>@(invoice.CountryCurrency?.CurrencyName)</td>
                             <td>
-                                <span class="badge @(invoice.InvoiceStatuses == InvoiceStatus.Paid ? "bg-success" : "bg-danger")">
-                                    @(invoice.InvoiceStatuses == InvoiceStatus.Paid ? "Paid" : "Unpaid")
+                                <span class="badge @(invoice.InvoiceStatuses == InvoiceStatus.Paid ? "bg-success" : invoice.InvoiceStatuses == InvoiceStatus.PartiallyPaid ? "bg-warning" : "bg-danger")">
+                                    @(invoice.InvoiceStatuses == InvoiceStatus.Paid ? "Paid" : invoice.InvoiceStatuses == InvoiceStatus.PartiallyPaid ? "Partially Paid" : "Unpaid")
                                 </span>
                             </td>
                             <td>
@@ -105,18 +108,18 @@
                                     @invoice.EmailStatus
                                 </span>
                             </td>
-                            <td class="nowrap">
+                            <td>
                                 <button class="btn btn-sm btn-primary me-2" @onclick="() => DownloadInvoice(invoice.ClientId)">
-                                    <i class="bi bi-download me-1"></i> Download
+                                    <i class="bi bi-download"></i> Download
                                 </button>
                                 <button class="btn btn-sm btn-success me-2" @onclick="() => ShowSendEmailModal(invoice.ClientId, invoice.Client?.Name)">
-                                    <i class="bi bi-envelope me-1"></i> Send Email
+                                    <i class="bi bi-envelope"></i> Send Email
                                 </button>
-                                <button class="btn btn-sm btn-warning me-2" @onclick="() => ShowMarkAsPaidModal(invoice.InvoiceId, invoice.Client?.Name)" disabled="@((invoice.InvoiceStatuses == InvoiceStatus.Paid))">
-                                    <i class="bi bi-cash-stack me-1"></i> Mark as Paid
+                                <button class="btn btn-sm btn-warning me-2" @onclick="() => ShowMarkAsPaidModal(invoice.InvoiceId, invoice.Client?.Name)" disabled="@(invoice.InvoiceStatuses == InvoiceStatus.Paid)">
+                                    <i class="bi bi-cash-stack"></i> Mark as Paid
                                 </button>
                                 <button class="btn btn-sm btn-danger" @onclick="() => ShowDeleteInvoiceModal(invoice.InvoiceId, invoice.Client?.Name)">
-                                    <i class="bi bi-trash me-1"></i> Delete
+                                    <i class="bi bi-trash"></i> Delete
                                 </button>
                             </td>
                         </tr>
@@ -158,7 +161,7 @@
 </div>
 @if (isMarkAsPaidModalVisible)
 {
-    <div class="modal-overlay div-responsive">
+    <div class="modal-overlay">
         <div class="delete-modal">
             <p class="fw-bold text-center">
                 Mark invoice for <span class="text-success">@modalClientName</span> as Paid?
