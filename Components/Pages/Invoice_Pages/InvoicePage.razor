@@ -185,6 +185,11 @@
                 <input type="number" class="form-control" value="@RemainingAmount" disabled />
             </div>
 
+            @if (!string.IsNullOrEmpty(MarkAsPaidErrorMessage))
+            {
+                <div class="alert alert-danger">@MarkAsPaidErrorMessage</div>
+            }
+
             <div class="d-flex justify-content-center gap-3">
                 <button class="btn btn-warning d-flex align-items-center" @onclick="ConfirmMarkAsPaid">
                     <i class="bi bi-cash-stack me-1"></i> Yes, Mark as Paid
@@ -331,13 +336,15 @@
     private bool isSendEmailModalVisible = false;
     private bool isDeleteInvoiceModalVisible = false;
     private string modalClientName = string.Empty;
+    private string MarkAsPaidErrorMessage = string.Empty;
 
     private int selectedPageSize = 5;
     private bool CanGoPrevious => currentPage > 1;
     private bool CanGoNext => currentPage < totalPages;
 
-    private DateTime StartDate { get; set; } = DateTime.UtcNow.AddMonths(-1);
-    private DateTime EndDate { get; set; } = DateTime.UtcNow;
+    // Change StartDate and EndDate to nullable so they're optional.
+    private DateTime? StartDate { get; set; } = null; // No date selected initially.
+    private DateTime? EndDate { get; set; } = null;
 
     private int modalInvoiceId;
     private int modalClientId;
@@ -361,6 +368,8 @@
             Console.WriteLine($"Error loading invoices: {ex.Message}");
         }
     }
+
+
 
     private async Task GenerateInvoice()
     {
@@ -439,36 +448,68 @@
             modalInvoiceId = invoice.InvoiceId;
             modalClientName = clientName;
             TotalAmount = invoice.TotalAmount;
-            PaymentAmount = invoice.PaidAmount;
-        
-    }
-    else
-    {
-        TotalAmount = 0;
-        PaymentAmount = 0;
-    }
+            PaymentAmount = invoice.PaidAmount; // Start with already paid amount
+            MarkAsPaidErrorMessage = string.Empty;
+        }
+        else
+        {
+            TotalAmount = 0;
+            PaymentAmount = 0;
+            MarkAsPaidErrorMessage = string.Empty;
+        }
 
-    isMarkAsPaidModalVisible = true;
+        isMarkAsPaidModalVisible = true;
     }
 
     private async Task ConfirmMarkAsPaid()
     {
         try
         {
-            if (PaymentAmount <= 0) return;
+            // Validation: Payment amount must be positive.
+            if (PaymentAmount <= 0)
+            {
+                MarkAsPaidErrorMessage = "Paid Amount must be greater than 0.";
+                return;
+            }
 
+            // Validation: Payment amount must not exceed total amount.
+            if (PaymentAmount > TotalAmount)
+            {
+                MarkAsPaidErrorMessage = "Paid Amount cannot exceed Total Amount.";
+                return;
+            }
+
+            // If validations pass, mark invoice as paid.
             await InvoiceService.MarkInvoiceAsPaidAsync(modalInvoiceId, PaymentAmount);
+
+            // Refresh the invoice list.
             Invoices = (await InvoiceService.GetAllInvoicesAsync()).ToList();
             FilterInvoices();
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error marking invoice as paid: {ex.Message}");
+            MarkAsPaidErrorMessage = $"Error: {ex.Message}";
+            return; // Do not close modal if error occurs.
         }
         finally
         {
-            isMarkAsPaidModalVisible = false;
+            // Only close the modal if there is no error.
+            if (string.IsNullOrEmpty(MarkAsPaidErrorMessage))
+            {
+                isMarkAsPaidModalVisible = false;
+                PaymentAmount = 0; // Reset input.
+            }
+            // else{
+            //     isMarkAsPaidModalVisible = false;
+            // }
         }
+    }
+    private void CancelMarkAsPaid()
+    {
+        isMarkAsPaidModalVisible = false;
+        PaymentAmount = 0;
+        MarkAsPaidErrorMessage = string.Empty;
     }
 
     private void ShowDeleteInvoiceModal(int invoiceId, string clientName)
@@ -581,10 +622,7 @@
     }
 
   
-    private void CancelMarkAsPaid()
-    {
-        isMarkAsPaidModalVisible = false;
-    }
+  
 
     private void CancelSendEmail()
     {
@@ -594,6 +632,17 @@
     private void CancelDeleteInvoice()
     {
         isDeleteInvoiceModalVisible = false;
+    }
+    private void OnStartDateChanged(DateTime newStartDate)
+    {
+        StartDate = newStartDate;
+        // Optionally, call a method to filter your data based on the new start date.
+    }
+
+    private void OnEndDateChanged(DateTime newEndDate)
+    {
+        EndDate = newEndDate;
+        // Optionally, call a method to filter your data based on the new end date.
     }
 
    

@@ -269,7 +269,7 @@ namespace Client_Invoice_System.Services
         }
 
         // Sends an invoice email and updates the EmailStatus.
-        public async Task<bool> SendInvoiceToClientAsync(int clientId, DateTime startDate, DateTime endDate)
+        public async Task<bool> SendInvoiceToClientAsync(int clientId, DateTime? startDate, DateTime? endDate)
         {
             try
             {
@@ -337,10 +337,11 @@ namespace Client_Invoice_System.Services
 
 
         // Generates a PDF for the given client using QuestPDF
-        public async Task<byte[]> GenerateInvoicePdfAsync(int clientId, DateTime startDate, DateTime endDate)
+        public async Task<byte[]> GenerateInvoicePdfAsync(int clientId, DateTime? startDate = null, DateTime? endDate = null)
         {
             try
             {
+                // Load client information (including country currency)
                 var client = await _context.Clients
                     .Where(c => c.ClientId == clientId)
                     .Include(c => c.CountryCurrency)
@@ -349,8 +350,7 @@ namespace Client_Invoice_System.Services
                 if (client == null)
                     throw new Exception("Client not found!");
 
-                // Retrieve the most recent unpaid invoice
-                var unpaidInvoice = await _context.Invoices
+                var unpaidInvoices = await _context.Invoices
                     .Where(i => i.ClientId == clientId && i.InvoiceStatuses != InvoiceStatus.Paid)
                     .Include(i => i.InvoiceItems)
                         .ThenInclude(ii => ii.Resource)
@@ -359,26 +359,37 @@ namespace Client_Invoice_System.Services
                         .ThenInclude(ii => ii.Resource)
                             .ThenInclude(r => r.OwnerProfile)
                     .Include(i => i.CountryCurrency)
+                    .Include(i => i.Client)
                     .OrderByDescending(i => i.InvoiceDate)
-                    .FirstOrDefaultAsync();
+                    .ToListAsync();
 
-                if (unpaidInvoice == null)
+                if (!unpaidInvoices.Any())
                     throw new Exception("No unpaid invoice found!");
 
-                // **Filter invoice items within date range**
-                var invoiceItems = unpaidInvoice.InvoiceItems
-                    .Where(ii => ii.Resource.CreatedAt >= startDate && ii.Resource.CreatedAt <= endDate)
-                    .ToList();
+                // Flatten invoice items from all unpaid invoices
+                List<InvoiceItem> invoiceItems;
+                if (startDate.HasValue && endDate.HasValue)
+                {
+                    invoiceItems = unpaidInvoices
+                        .SelectMany(i => i.InvoiceItems)
+                        .Where(ii => ii.Resource.CreatedAt >= startDate.Value && ii.Resource.CreatedAt <= endDate.Value)
+                        .ToList();
+                }
+                else
+                {
+                    invoiceItems = unpaidInvoices.SelectMany(i => i.InvoiceItems).ToList();
+                }
 
                 if (!invoiceItems.Any())
-                    throw new Exception("No resource consumption found in the selected date range.");
+                    throw new Exception("No resource consumption found for the selected date range.");
 
-                // **Recalculate totalAmount based on filtered items**
+                // Recalculate totalAmount based on all unpaid invoices
                 decimal totalAmount = invoiceItems.Sum(ii => ii.TotalAmount);
-                decimal paidAmount = unpaidInvoice.PaidAmount;
+                decimal paidAmount = unpaidInvoices.Sum(i => i.PaidAmount); // Sum across all unpaid invoices
                 decimal remainingAmount = totalAmount - paidAmount;
 
-                // **Ensure we get the correct Owner Profile**
+
+                // Retrieve the OwnerProfile from the first invoice item (fallback to default if null)
                 var ownerProfile = invoiceItems.FirstOrDefault()?.Resource.OwnerProfile ?? new OwnerProfile
                 {
                     OwnerName = "Default Owner",
@@ -395,9 +406,16 @@ namespace Client_Invoice_System.Services
                     AccountNumber = "0000000000"
                 };
 
-                // **Culture and Currency Handling**
+                // Determine culture and currency symbol
                 CultureInfo culture;
                 string currencySymbol = client?.CountryCurrency?.Symbol ?? "$";
+                if (currencySymbol == "¤")
+                {
+                    if (client?.CountryCurrency?.CurrencyCode == "GBP")
+                        currencySymbol = "£";
+                    else
+                        currencySymbol = "$"; // or any other default you prefer
+                }
                 try
                 {
                     culture = new CultureInfo(client.CountryCurrency.CurrencyCode);
@@ -406,7 +424,6 @@ namespace Client_Invoice_System.Services
                 {
                     culture = new CultureInfo("en-US");
                 }
-
 
                 using (MemoryStream ms = new MemoryStream())
                 {
@@ -432,10 +449,8 @@ namespace Client_Invoice_System.Services
 
                                 table.Cell().Border(1).Padding(2).AlignLeft().Text("Atrule Technologies").Bold();
                                 table.Cell().Border(1).Padding(2).AlignLeft().Text("From\nAtrule Technologies,\n2nd Floor, Khawar Center, SP Chowk, Multan Pakistan");
-                                table.Cell().Border(1).Padding(2).AlignLeft().Text(
-                                    $"To\n{client.Name}\n{client.Address}\nEmail: {client.Email}\nPhone: {client.PhoneNumber}");
-                                table.Cell().Border(1).Padding(2).AlignLeft().Text(
-                                    $"Invoice No: INV/{DateTime.Now.Year}/000{clientId}\nDate: {DateTime.Now:MM/dd/yyyy}").Bold();
+                                table.Cell().Border(1).Padding(2).AlignLeft().Text($"To\n{client.Name}\n{client.Address}\nEmail: {client.Email}\nPhone: {client.PhoneNumber}");
+                                table.Cell().Border(1).Padding(2).AlignLeft().Text($"Invoice No: INV/{DateTime.Now.Year}/000{clientId}\nDate: {DateTime.Now:MM/dd/yyyy}").Bold();
                             });
 
                             // CONTENT
@@ -470,74 +485,109 @@ namespace Client_Invoice_System.Services
 
                                 col.Item().PaddingTop(10);
 
-                                 col.Item().PaddingTop(10);
-                        col.Item().Container().PaddingTop(5);
-                        col.Item().PaddingTop(5);
-                        col.Item().Table(serviceTable =>
-                        {
-                            // Define table columns for service details.
-                            serviceTable.ColumnsDefinition(columns =>
-                            {
-                                columns.RelativeColumn();    // Description column.
-                                columns.ConstantColumn(60);  // Quantity.
-                                columns.ConstantColumn(80);  // Rate.
-                                columns.ConstantColumn(120); // Subtotal.
-                            });
-
-                            // Table Header.
-                            serviceTable.Header(header =>
-                            {
-                                string headerColor = "#2F4F4F";
-                                header.Cell().Border(1).Background(Color.FromHex(headerColor)).Padding(5)
-                                    .Text(text => text.Span("Description").FontColor(Colors.White).Bold());
-                                header.Cell().Border(1).Background(Color.FromHex(headerColor)).Padding(5)
-                                    .Text(text => text.Span("Quantity").FontColor(Colors.White).Bold());
-                                header.Cell().Border(1).Background(Color.FromHex(headerColor)).Padding(5)
-                                    .Text(text => text.Span($"Rate ({currencySymbol})").FontColor(Colors.White).Bold());
-                                header.Cell().Border(1).Background(Color.FromHex(headerColor)).Padding(5)
-                                    .Text(text => text.Span($"Subtotal ({currencySymbol})").FontColor(Colors.White).Bold());
-                            });
-
-                            // For each invoice item, use a two-row format.
-                            foreach (var item in invoiceItems)
-                            {
-                                decimal subtotal = item.TotalAmount; // ConsumedHours * RatePerHour.
-
-                                serviceTable.Cell().ColumnSpan(4).Border(1).Padding(5)
-                                    .Text($"{item.Resource.ResourceName} - {item.Resource.Employee.EmployeeName} - Monthly Contract - {unpaidInvoice.InvoiceDate:MMMM yyyy}");
-
-                                serviceTable.Cell().ColumnSpan(1).Border(1).Padding(5)
-                                    .Text($"Amount in {currencySymbol}: {item.ConsumedHours} Hours X {item.RatePerHour.ToString("C2", culture)} = {subtotal.ToString("C2", culture)}")
-                                    .Italic();
-
-                                serviceTable.Cell().Border(1).Padding(5).AlignCenter().Text("1");
-                                serviceTable.Cell().Border(1).Padding(5).AlignCenter().Text(item.RatePerHour.ToString("C2", culture));
-                                serviceTable.Cell().Border(1).Padding(5).AlignCenter().Text(subtotal.ToString("C2", culture));
-                            }
-
-                            // ---- TOTALS SECTION (within the same column) ----
-                            serviceTable.Cell().ColumnSpan(1).Border(1).Padding(5).Text("Software Consultancy Services").Bold();
-                            serviceTable.Cell().ColumnSpan(3).Border(1).Table(totalTable =>
-                            {
-                                totalTable.ColumnsDefinition(subCols =>
+                                // Service Details Table
+                                col.Item().Table(serviceTable =>
                                 {
-                                    subCols.RelativeColumn();
-                                    subCols.ConstantColumn(100);
+                                    // Define table columns.
+                                    serviceTable.ColumnsDefinition(columns =>
+                                    {
+                                        columns.RelativeColumn();    // Description.
+                                        columns.ConstantColumn(60);   // Quantity.
+                                        columns.ConstantColumn(80);   // Rate.
+                                        columns.ConstantColumn(120);  // Subtotal.
+                                        if (remainingAmount > 0)
+                                        {
+                                            columns.ConstantColumn(120); // Remaining Amount column.
+                                        }
+                                    });
+
+                                    // Table Header.
+                                    serviceTable.Header(header =>
+                                    {
+
+                                        string headerColor = "#2F4F4F";
+                                        header.Cell().Border(1).Background(Color.FromHex(headerColor)).Padding(5)
+                                            .Text(text => text.Span("Description").FontColor(Colors.White).Bold());
+                                        header.Cell().Border(1).Background(Color.FromHex(headerColor)).Padding(5)
+                                            .Text(text => text.Span("Quantity").FontColor(Colors.White).Bold());
+                                        header.Cell().Border(1).Background(Color.FromHex(headerColor)).Padding(5)
+                                            .Text(text => text.Span($"Rate ({currencySymbol})").FontColor(Colors.White).Bold());
+                                        header.Cell().Border(1).Background(Color.FromHex(headerColor)).Padding(5)
+                                            .Text(text => text.Span($"Subtotal ({currencySymbol})").FontColor(Colors.White).Bold());
+                                        if (remainingAmount >0)
+                                        {
+                                            header.Cell().Border(1).Background(Color.FromHex(headerColor)).Padding(5)
+                                                .Text(text => text.Span($"Remaining Amount ({currencySymbol})").FontColor(Colors.White).Bold());
+                                        }
+                                    });
+
+                                    // Invoice Items rows.
+                                    // Determine whether to show the Remaining Amount column:
+                                    bool showRemainingColumn = (paidAmount > 0 && remainingAmount > 0);
+
+                                    foreach (var item in invoiceItems)
+                                    {
+                                        decimal subtotal = item.TotalAmount; // Already calculated in each item.
+
+                                        serviceTable.Cell().ColumnSpan(5).Border(1).Padding(5)
+                                            //.Text($"{item.Resource.ResourceName} - {item.Resource.Employee.EmployeeName} - Monthly Contract - {unpaidInvoice.InvoiceDate:MMMM yyyy}");
+                                            .Text($"{item.Resource.ResourceName} - {item.Resource.Employee.EmployeeName} - Monthly Contract - {DateTime.Now:MMMM yyyy}");
+
+                                        serviceTable.Cell().ColumnSpan(1).Border(1).Padding(5)
+                                            .Text($"Calculation\nAmount in {currencySymbol}: {item.ConsumedHours} Hours X {item.RatePerHour.ToString("C2", culture)} = {subtotal.ToString("C2", culture)}")
+                                            .Italic();
+
+                                        serviceTable.Cell().Border(1).Padding(5).AlignCenter().Text("1");
+                                        serviceTable.Cell().Border(1).Padding(5).AlignCenter().Text(item.RatePerHour.ToString("C2", culture));
+                                        serviceTable.Cell().Border(1).Padding(5).AlignCenter().Text(subtotal.ToString("C2", culture));
+
+                                        if (showRemainingColumn)
+                                        {
+                                            // Distribute remaining amount equally per invoice item (or apply your own logic).
+                                            decimal remainingPerItem = remainingAmount / invoiceItems.Count;
+                                            serviceTable.Cell().Border(1).Padding(5).AlignCenter().Text(remainingPerItem.ToString("C2", culture));
+                                        }
+                                        else
+                                        {
+                                            serviceTable.Cell().Border(1).Padding(5).AlignCenter().Text("");
+                                        }
+                                    }
+
+                                    // Totals Section.
+                                    serviceTable.Cell().ColumnSpan(3).Border(1).Padding(5).Text("Software Consultancy Services").Bold();
+
+                                    // Adjust the column span based on whether we are showing the remaining column.
+                                    //uint totalColumns = showRemainingColumn ? 4u : 3u;
+                                    uint totalColumns = 2u;
+                                    serviceTable.Cell().ColumnSpan(totalColumns).Border(1).Table(totalTable =>
+                                    {
+                                        totalTable.ColumnsDefinition(subCols =>
+                                        {
+                                            subCols.RelativeColumn();
+                                            subCols.ConstantColumn(100);
+                                        });
+
+                                        if (showRemainingColumn)
+                                        {
+                                            totalTable.Cell().Border(1).Padding(5).Text("Total Remaining Amount").Bold();
+                                            totalTable.Cell().Border(1).Padding(5).AlignRight().Text(remainingAmount.ToString("C2", culture)).Bold();
+                                        }
+                                        else
+                                        {
+                                            totalTable.Cell().Border(1).Padding(5).Text("Total Amount").Bold();
+                                            totalTable.Cell().Border(1).Padding(5).AlignRight().Text(totalAmount.ToString("C2", culture)).Bold();
+                                        }
+
+                                        totalTable.Cell().Border(1).Padding(5).Text("Total Due By").Bold();
+                                        totalTable.Cell().Border(1).Padding(5).AlignRight().Text($"{DateTime.Now.AddDays(5):MM/dd/yyyy}").Bold();
+                                    });
+
+
                                 });
 
-                                totalTable.Cell().Border(1).Padding(5).Text("Total Amount").Bold();
-                                totalTable.Cell().Border(1).Padding(5).AlignRight().Text(totalAmount.ToString("C2", culture)).Bold();
-                                totalTable.Cell().Border(1).Padding(5).Text("Paid Amount").Bold();
-                                totalTable.Cell().Border(1).Padding(5).AlignRight().Text(paidAmount.ToString("C2", culture)).Bold();
-                                totalTable.Cell().Border(1).Padding(5).Text("Remaining Amount").Bold();
-                                totalTable.Cell().Border(1).Padding(5).AlignRight().Text(remainingAmount.ToString("C2", culture)).Bold();
-                                totalTable.Cell().Border(1).Padding(5).Text("Total Due By").Bold();
-                                totalTable.Cell().Border(1).Padding(5).AlignRight().Text($"{DateTime.Now.AddDays(5):MM/dd/yyyy}").Bold();
+                                col.Item().PaddingTop(5);
                             });
-                        });
 
-                        col.Item().PaddingTop(5);
-                    });
                             // FOOTER.
                             page.Footer().AlignCenter().Text("Email: suleman@atrule.com | Web: atrule.com | Phone: +92-313-6120356").FontSize(10);
                         });

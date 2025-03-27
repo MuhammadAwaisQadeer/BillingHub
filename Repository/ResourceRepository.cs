@@ -113,6 +113,7 @@ namespace Client_Invoice_System.Repository
                 return await context.Resources
                     .Include(r => r.Client)
                     .Include(r => r.Employee)
+                    .Include(r => r.OwnerProfile)  // ✅ Ensure OwnerProfile is included
                     .ToListAsync();
             }
             catch (Exception ex)
@@ -121,6 +122,7 @@ namespace Client_Invoice_System.Repository
                 return new List<Resource>();
             }
         }
+
 
         public async Task<Resource?> GetByIdAsync(int resourceId)
         {
