@@ -104,7 +104,7 @@
                             <td>@(invoice.CountryCurrency?.Symbol) @invoice.TotalAmount.ToString("N2")</td>
                             <td>@(invoice.CountryCurrency?.Symbol) @invoice.PaidAmount.ToString("N2")</td>
                             <td>@(invoice.CountryCurrency?.Symbol) @invoice.RemainingAmount.ToString("N2")</td>
-                            <td>@(invoice.CountryCurrency?.CurrencyName)</td>
+                            <td>@(invoice.Client?.CountryCurrency?.CurrencyName ?? "-")</td>
                             <td>
                                 <span class="badge @(invoice.InvoiceStatuses == InvoiceStatus.Paid ? "bg-success" : invoice.InvoiceStatuses == InvoiceStatus.PartiallyPaid ? "bg-warning" : "bg-danger")">
                                     @(invoice.InvoiceStatuses == InvoiceStatus.Paid ? "Paid" : invoice.InvoiceStatuses == InvoiceStatus.PartiallyPaid ? "Partially Paid" : "Unpaid")
