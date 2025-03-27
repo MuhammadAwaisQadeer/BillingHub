@@ -184,7 +184,7 @@ namespace Client_Invoice_System.Services
         }
 
         // Saves an invoice for a client by updating an existing unpaid invoice or creating a new one for uninvoiced resources.
-        public async Task<int> SaveInvoiceAsync(int clientId)
+        public async Task<List<int>> SaveInvoiceAsync(int clientId)
         {
             try
             {
@@ -192,78 +192,56 @@ namespace Client_Invoice_System.Services
                     .Include(c => c.Resources)
                     .ThenInclude(r => r.Employee)
                     .FirstOrDefaultAsync(c => c.ClientId == clientId);
+
                 if (client == null)
                     throw new Exception("Client not found!");
 
                 var newResources = client.Resources.Where(r => !r.IsInvoiced).ToList();
-                decimal newAmount = newResources.Sum(r => r.ConsumedTotalHours * r.Employee.HourlyRate);
-
-                if (newAmount == 0)
+                if (!newResources.Any())
                 {
                     Console.WriteLine($"⚠️ No new resources to invoice for Client {clientId}.");
-                    var unpaidInvoice = await GetUnpaidInvoiceForClientAsync(clientId);
-                    return unpaidInvoice?.InvoiceId ?? 0;
+                    return new List<int>();
                 }
 
-                var existingInvoice = await GetUnpaidInvoiceForClientAsync(clientId);
-                if (existingInvoice != null)
-                {
-                    // Add new InvoiceItems to the existing unpaid invoice.
-                    foreach (var resource in newResources)
-                    {
-                        var invoiceItem = new InvoiceItem
-                        {
-                            InvoiceId = existingInvoice.InvoiceId,
-                            ResourceId = resource.ResourceId,
-                            ConsumedHours = resource.ConsumedTotalHours,
-                            RatePerHour = resource.Employee.HourlyRate
-                        };
-                        existingInvoice.InvoiceItems.Add(invoiceItem);
-                        resource.IsInvoiced = true;
-                    }
-                    existingInvoice.TotalAmount = existingInvoice.InvoiceItems.Sum(ii => ii.TotalAmount);
-                    existingInvoice.RemainingAmount = existingInvoice.TotalAmount - existingInvoice.PaidAmount;
-                    await _context.SaveChangesAsync();
-                    Console.WriteLine($"✅ Updated Invoice {existingInvoice.InvoiceId} with additional amount: {newAmount:C}.");
-                    return existingInvoice.InvoiceId;
-                }
-                else
+                List<int> newInvoiceIds = new List<int>();
+                foreach (var resource in newResources)
                 {
                     var newInvoice = new Invoice
                     {
                         ClientId = clientId,
                         InvoiceDate = DateTime.UtcNow,
-                        TotalAmount = 0,
+                        TotalAmount = resource.ConsumedTotalHours * resource.Employee.HourlyRate,
                         PaidAmount = 0,
+                        RemainingAmount = resource.ConsumedTotalHours * resource.Employee.HourlyRate,
                         CountryCurrencyId = client.CountryCurrencyId,
                         InvoiceStatuses = InvoiceStatus.Pending,
                         EmailStatus = "Not Sent"
                     };
+
                     await _context.Invoices.AddAsync(newInvoice);
                     await _context.SaveChangesAsync();
 
-                    foreach (var resource in newResources)
+                    var invoiceItem = new InvoiceItem
                     {
-                        var invoiceItem = new InvoiceItem
-                        {
-                            InvoiceId = newInvoice.InvoiceId,
-                            ResourceId = resource.ResourceId,
-                            ConsumedHours = resource.ConsumedTotalHours,
-                            RatePerHour = resource.Employee.HourlyRate
-                        };
-                        newInvoice.InvoiceItems.Add(invoiceItem);
-                        resource.IsInvoiced = true;
-                    }
-                    newInvoice.TotalAmount = newInvoice.InvoiceItems.Sum(ii => ii.TotalAmount);
-                    newInvoice.RemainingAmount = newInvoice.TotalAmount;
+                        InvoiceId = newInvoice.InvoiceId,
+                        ResourceId = resource.ResourceId,
+                        ConsumedHours = resource.ConsumedTotalHours,
+                        RatePerHour = resource.Employee.HourlyRate
+                    };
+                    newInvoice.InvoiceItems.Add(invoiceItem);
+                    resource.IsInvoiced = true;
+
                     await _context.SaveChangesAsync();
-                    Console.WriteLine($"✅ Invoice {newInvoice.InvoiceId} created successfully with amount: {newInvoice.TotalAmount:C}.");
-                    return newInvoice.InvoiceId;
+                    newInvoiceIds.Add(newInvoice.InvoiceId);
+
+                    Console.WriteLine($"✅ Created new Invoice {newInvoice.InvoiceId} for Resource {resource.ResourceId} with amount: {newInvoice.TotalAmount:C}.");
                 }
+
+                return newInvoiceIds;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Error saving invoice: {ex.Message}");
+                Console.WriteLine($"❌ Error saving invoices: {ex.Message}");
                 throw;
             }
         }
@@ -385,8 +363,10 @@ namespace Client_Invoice_System.Services
 
                 // Recalculate totalAmount based on all unpaid invoices
                 decimal totalAmount = invoiceItems.Sum(ii => ii.TotalAmount);
-                decimal paidAmount = unpaidInvoices.Sum(i => i.PaidAmount); // Sum across all unpaid invoices
+                decimal paidAmount = unpaidInvoices.Sum(i => i.PaidAmount);
                 decimal remainingAmount = totalAmount - paidAmount;
+                bool showRemainingColumn = remainingAmount > 0;
+
 
 
                 // Retrieve the OwnerProfile from the first invoice item (fallback to default if null)
@@ -408,21 +388,22 @@ namespace Client_Invoice_System.Services
 
                 // Determine culture and currency symbol
                 CultureInfo culture;
-                string currencySymbol = client?.CountryCurrency?.Symbol ?? "$";
-                if (currencySymbol == "¤")
+                string currencySymbol = client?.CountryCurrency?.Symbol ?? "$"; // Default to USD symbol
+                string currencyname = client?.CountryCurrency?.CurrencyName ?? "USD";
+                if (!string.IsNullOrEmpty(client?.CountryCurrency?.CurrencyCode))
                 {
-                    if (client?.CountryCurrency?.CurrencyCode == "GBP")
-                        currencySymbol = "£";
-                    else
-                        currencySymbol = "$"; // or any other default you prefer
+                    try
+                    {
+                        culture = new CultureInfo(client.CountryCurrency.CurrencyCode);
+                    }
+                    catch (CultureNotFoundException)
+                    {
+                        culture = new CultureInfo("en-US"); // Fallback to default
+                    }
                 }
-                try
+                else
                 {
-                    culture = new CultureInfo(client.CountryCurrency.CurrencyCode);
-                }
-                catch (CultureNotFoundException)
-                {
-                    culture = new CultureInfo("en-US");
+                    culture = new CultureInfo("en-US"); // Default if currency is not set
                 }
 
                 using (MemoryStream ms = new MemoryStream())
@@ -491,14 +472,11 @@ namespace Client_Invoice_System.Services
                                     // Define table columns.
                                     serviceTable.ColumnsDefinition(columns =>
                                     {
-                                        columns.RelativeColumn();    // Description.
-                                        columns.ConstantColumn(60);   // Quantity.
-                                        columns.ConstantColumn(80);   // Rate.
-                                        columns.ConstantColumn(120);  // Subtotal.
-                                        if (remainingAmount > 0)
-                                        {
-                                            columns.ConstantColumn(120); // Remaining Amount column.
-                                        }
+                                        columns.RelativeColumn();    
+                                        columns.ConstantColumn(60);   
+                                        columns.ConstantColumn(80);   
+                                        columns.ConstantColumn(120); 
+                                        if (showRemainingColumn) columns.ConstantColumn(120);
                                     });
 
                                     // Table Header.
@@ -514,49 +492,84 @@ namespace Client_Invoice_System.Services
                                             .Text(text => text.Span($"Rate ({currencySymbol})").FontColor(Colors.White).Bold());
                                         header.Cell().Border(1).Background(Color.FromHex(headerColor)).Padding(5)
                                             .Text(text => text.Span($"Subtotal ({currencySymbol})").FontColor(Colors.White).Bold());
-                                        if (remainingAmount >0)
+                                        if (showRemainingColumn)
                                         {
                                             header.Cell().Border(1).Background(Color.FromHex(headerColor)).Padding(5)
-                                                .Text(text => text.Span($"Remaining Amount ({currencySymbol})").FontColor(Colors.White).Bold());
+                                                .Text($"Remaining Amount ({currencySymbol})").FontColor(Colors.White).Bold();
                                         }
                                     });
 
                                     // Invoice Items rows.
-                                    // Determine whether to show the Remaining Amount column:
-                                    bool showRemainingColumn = (paidAmount > 0 && remainingAmount > 0);
+                                    //bool showRemainingColumn = (paidAmount > 0 && remainingAmount > 0);
 
                                     foreach (var item in invoiceItems)
                                     {
-                                        decimal subtotal = item.TotalAmount; // Already calculated in each item.
+                                        decimal subtotal = item.TotalAmount; 
 
                                         serviceTable.Cell().ColumnSpan(5).Border(1).Padding(5)
                                             //.Text($"{item.Resource.ResourceName} - {item.Resource.Employee.EmployeeName} - Monthly Contract - {unpaidInvoice.InvoiceDate:MMMM yyyy}");
                                             .Text($"{item.Resource.ResourceName} - {item.Resource.Employee.EmployeeName} - Monthly Contract - {DateTime.Now:MMMM yyyy}");
 
                                         serviceTable.Cell().ColumnSpan(1).Border(1).Padding(5)
-                                            .Text($"Calculation\nAmount in {currencySymbol}: {item.ConsumedHours} Hours X {item.RatePerHour.ToString("C2", culture)} = {subtotal.ToString("C2", culture)}")
-                                            .Italic();
-
+                                            .Text($"Calculation\nAmount in {currencyname}: {item.ConsumedHours} Hours X {currencySymbol}{item.RatePerHour:F2} = {currencySymbol}{subtotal:F2}")
+.Italic();
                                         serviceTable.Cell().Border(1).Padding(5).AlignCenter().Text("1");
-                                        serviceTable.Cell().Border(1).Padding(5).AlignCenter().Text(item.RatePerHour.ToString("C2", culture));
-                                        serviceTable.Cell().Border(1).Padding(5).AlignCenter().Text(subtotal.ToString("C2", culture));
+                                        serviceTable.Cell().Border(1).Padding(5).AlignCenter()
+                                            .Text($"{currencySymbol}{item.RatePerHour:F2}");
+
+                                        serviceTable.Cell().Border(1).Padding(5).AlignCenter()
+                                            .Text($"{currencySymbol}{subtotal:F2}");
 
                                         if (showRemainingColumn)
                                         {
-                                            // Distribute remaining amount equally per invoice item (or apply your own logic).
-                                            decimal remainingPerItem = remainingAmount / invoiceItems.Count;
-                                            serviceTable.Cell().Border(1).Padding(5).AlignCenter().Text(remainingPerItem.ToString("C2", culture));
+                                            // Get the invoice associated with this item
+                                            var relatedInvoice = unpaidInvoices.FirstOrDefault(i => i.InvoiceId == item.InvoiceId);
+
+                                            decimal remainingForResource = 0;
+
+                                            if (relatedInvoice != null)
+                                            {
+                                                bool isPartiallyPaid = relatedInvoice.PaidAmount > 0 && relatedInvoice.RemainingAmount > 0;
+                                                bool isFullyPaid = relatedInvoice.RemainingAmount == 0;
+                                                bool isUnpaid = relatedInvoice.PaidAmount == 0 && relatedInvoice.RemainingAmount > 0;
+
+                                                if (isPartiallyPaid)
+                                                {
+                                                    // Show remaining amount for partially paid invoices
+                                                    remainingForResource = item.TotalAmount * (relatedInvoice.RemainingAmount / relatedInvoice.TotalAmount);
+                                                }
+                                                else if (isUnpaid)
+                                                {
+                                                    remainingForResource = 0;
+                                                }
+                                                else if (isFullyPaid)
+                                                {
+                                                    remainingForResource = 0;
+                                                }
+                                            }
+
+                                            // Ensure we only show remaining for the first occurrence of this resource
+                                            bool isFirstOccurrence = invoiceItems
+                                                .Where(i => i.InvoiceId == item.InvoiceId)
+                                                .OrderBy(i => i.ResourceId)
+                                                .FirstOrDefault()?.ResourceId == item.ResourceId;
+
+                                            serviceTable.Cell().Border(1).Padding(5).AlignCenter()
+                                                .Text(isFirstOccurrence && remainingForResource > 0
+                                                      ? $"{currencySymbol}{remainingForResource:F2}"
+                                                      : "");
                                         }
                                         else
                                         {
-                                            serviceTable.Cell().Border(1).Padding(5).AlignCenter().Text("");
+                                            serviceTable.Cell().Border(1).Padding(5).AlignCenter().Text("0.00");
                                         }
+
+
                                     }
 
                                     // Totals Section.
                                     serviceTable.Cell().ColumnSpan(3).Border(1).Padding(5).Text("Software Consultancy Services").Bold();
 
-                                    // Adjust the column span based on whether we are showing the remaining column.
                                     //uint totalColumns = showRemainingColumn ? 4u : 3u;
                                     uint totalColumns = 2u;
                                     serviceTable.Cell().ColumnSpan(totalColumns).Border(1).Table(totalTable =>
@@ -569,17 +582,22 @@ namespace Client_Invoice_System.Services
 
                                         if (showRemainingColumn)
                                         {
-                                            totalTable.Cell().Border(1).Padding(5).Text("Total Remaining Amount").Bold();
-                                            totalTable.Cell().Border(1).Padding(5).AlignRight().Text(remainingAmount.ToString("C2", culture)).Bold();
+                                            decimal totalRemaining = unpaidInvoices.Sum(i => i.RemainingAmount);
+
+                                            totalTable.Cell().Border(1).Padding(5).Text("Total Amount").Bold();
+                                            totalTable.Cell().Border(1).Padding(5).AlignRight()
+                                                .Text($"{currencySymbol}{(totalRemaining > 0 ? totalRemaining : totalAmount):F2}").Bold();
                                         }
                                         else
                                         {
                                             totalTable.Cell().Border(1).Padding(5).Text("Total Amount").Bold();
-                                            totalTable.Cell().Border(1).Padding(5).AlignRight().Text(totalAmount.ToString("C2", culture)).Bold();
+                                            totalTable.Cell().Border(1).Padding(5).AlignRight()
+                                                .Text($"{currencySymbol}{totalAmount:F2}").Bold();
                                         }
 
                                         totalTable.Cell().Border(1).Padding(5).Text("Total Due By").Bold();
-                                        totalTable.Cell().Border(1).Padding(5).AlignRight().Text($"{DateTime.Now.AddDays(5):MM/dd/yyyy}").Bold();
+                                        totalTable.Cell().Border(1).Padding(5).AlignRight()
+                                            .Text($"{DateTime.Now.AddDays(5):MM/dd/yyyy}").Bold();
                                     });
 
 

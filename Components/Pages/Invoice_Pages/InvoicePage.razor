@@ -16,32 +16,42 @@
 <h3 class="mb-4 fw-bold">Invoice Management</h3>
 
 <!-- Client Selection and Generate Invoice Button -->
-<div class="d-flex align-items-center gap-2 mb-3">
-    <select class="form-control w-25" @bind="SelectedClientId">
-        <option value="">-- Select Client --</option>
-        @foreach (var client in Clients)
-        {
-            <option value="@client.ClientId">
-                @client.Name (@(client.CountryCurrency?.Symbol ?? client.CustomCurrency))
-            </option>
-        }
-    </select>
-    <button class="btn btn-primary" @onclick="GenerateInvoice">Generate Invoice</button>
+<!-- Filter Section: Client Selection, Date Range, and Generate Invoice -->
+<div class="row align-items-end mb-3">
+    <!-- Client Selection -->
+    <div class="col-lg-3 col-md-4 col-sm-6">
+        <label for="clientSelect">Client</label>
+        <select class="form-control" id="clientSelect" @bind="SelectedClientId">
+            <option value="">-- Select Client --</option>
+            @foreach (var client in Clients)
+            {
+                <option value="@client.ClientId">
+                    @client.Name (@(client.CountryCurrency?.Symbol ?? client.CustomCurrency))
+                </option>
+            }
+        </select>
+    </div>
+
+    <!-- Start Date -->
+    <div class="col-lg-2 col-md-2 col-sm-6">
+        <label for="startDate">Start Date</label>
+        <InputDate @bind-Value="StartDate" class="form-control w-35 " />
+    </div>
+
+    <!-- End Date -->
+    <div class="col-lg-2 col-md-2 col-sm-6">
+        <label for="endDate">End Date</label>
+        <InputDate @bind-Value="EndDate" class="form-control w-35" />
+    </div>
+
+    <!-- Generate Invoice Button -->
+    <div class="col-lg-3 col-md-2 col-sm-6">
+        <button class="btn btn-primary w-30 mt-4" @onclick="GenerateInvoice">
+            Generate Invoice
+        </button>
+    </div>
 </div>
 
-<!-- Date Range Filters using Bootstrap CDatePicker components --> 
-<div class="row mb-3"> 
-    <FormColumn sm="12" md="4" lg="3" xl="3"> 
-        <CDatePicker control="@datePickerControl" name="startDate" isEnable="true"
-        placeholder="Enter start date" label="Start Date"
-        Value="@StartDate" ValueChanged="OnStartDateChanged" />
-    </FormColumn> 
-    <FormColumn sm="12" md="4" lg="3" xl="3"> 
-        <CDatePicker control="@datePickerControl" name="endDate" isEnable="true"
-        placeholder="Enter end date" label="End Date"
-        Value="@EndDate" ValueChanged="OnEndDateChanged" />
-    </FormColumn> 
-</div>
 
 <!-- Invoice Table -->
 <div class="card p-3 shadow-lg rounded-4 bg-white">
@@ -82,6 +92,7 @@
                         <th>Client</th>
                         <th>Invoice Date</th>
                         <th>Total Amount</th>
+                        <th>Paid Amount</th>
                         <th>Remaining Amount</th>
                         <th>Currency</th>
                         <th>Status</th>
@@ -96,6 +107,7 @@
                             <td>@(invoice.Client?.Name ?? "Unknown")</td>
                             <td>@invoice.InvoiceDate.ToShortDateString()</td>
                             <td>@(invoice.CountryCurrency?.Symbol) @invoice.TotalAmount.ToString("N2")</td>
+                            <td>@(invoice.CountryCurrency?.Symbol) @invoice.PaidAmount.ToString("N2")</td>
                             <td>@(invoice.CountryCurrency?.Symbol) @invoice.RemainingAmount.ToString("N2")</td>
                             <td>@(invoice.CountryCurrency?.CurrencyName)</td>
                             <td>
@@ -108,7 +120,7 @@
                                     @invoice.EmailStatus
                                 </span>
                             </td>
-                            <td>
+                            <td class="nowrap">
                                 <button class="btn btn-sm btn-primary me-2" @onclick="() => DownloadInvoice(invoice.ClientId)">
                                     <i class="bi bi-download"></i> Download
                                 </button>
@@ -258,61 +270,61 @@
 
 <style>
     .container {
-    max-width: 1200px;
+        max-width: 1200px;
     }
 
     .table-responsive {
-    overflow-x: auto;
-    min-width: 100%;
-    display: block;
-    white-space: nowrap;
+        overflow-x: auto;
+        min-width: 100%;
+        display: block;
+        white-space: nowrap;
     }
 
     .div-responsive {
-    max-width: calc(100vw - 350px);
+        max-width: calc(100vw - 350px);
     }
 
     th, td {
-    min-width: 150px;
+        min-width: 150px;
     }
 
-    td.nowrap {
-    white-space: nowrap;
-    }
+        td.nowrap {
+            white-space: nowrap;
+        }
 
     .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: rgba(0, 0, 0, 0.4);
-    z-index: 1050;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 1050;
     }
 
     .delete-modal {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-    text-align: center;
-    max-width: 400px;
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        text-align: center;
+        max-width: 400px;
     }
 
     .btn-sm {
-    min-width: 70px;
+        min-width: 70px;
     }
 
     tbody td {
-    text-align: center;
-    vertical-align: middle;
+        text-align: center;
+        vertical-align: middle;
     }
 
     thead th {
-    text-align: center;
+        text-align: center;
     }
 </style>
 @code {
@@ -327,7 +339,7 @@
     private string SelectedEmailStatus = "";
     private string searchQuery = "";
     private object datePickerControl = new();
-    private int pageSize = 10;
+    private int pageSize = 5;
     private int currentPage = 1;
     private int totalPages = 1;
 
@@ -371,21 +383,46 @@
 
 
 
+    // private async Task GenerateInvoice()
+    // {
+    //     try
+    //     {
+    //         if (SelectedClientId <= 0) return;
+
+    //         var existingInvoice = await InvoiceService.GetUnpaidInvoiceForClientAsync(SelectedClientId);
+    //         if (existingInvoice != null)
+    //         {
+    //             existingInvoice.TotalAmount += await InvoiceService.CalculateAdditionalAmountAsync(SelectedClientId);
+    //             await InvoiceService.UpdateInvoiceAsync(existingInvoice);
+    //         }
+    //         else
+    //         {
+    //             await InvoiceService.CreateInvoiceAsync(SelectedClientId);
+    //         }
+
+    //         Invoices = (await InvoiceService.GetAllInvoicesAsync()).ToList();
+    //         FilterInvoices();
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         Console.WriteLine($"Error generating invoice: {ex.Message}");
+    //     }
+    // }
     private async Task GenerateInvoice()
     {
         try
         {
             if (SelectedClientId <= 0) return;
 
-            var existingInvoice = await InvoiceService.GetUnpaidInvoiceForClientAsync(SelectedClientId);
-            if (existingInvoice != null)
+            var newInvoiceIds = await InvoiceService.SaveInvoiceAsync(SelectedClientId);
+
+            if (newInvoiceIds.Any())
             {
-                existingInvoice.TotalAmount += await InvoiceService.CalculateAdditionalAmountAsync(SelectedClientId);
-                await InvoiceService.UpdateInvoiceAsync(existingInvoice);
+                Console.WriteLine($"✅ Generated {newInvoiceIds.Count} new invoices for Client {SelectedClientId}.");
             }
             else
             {
-                await InvoiceService.CreateInvoiceAsync(SelectedClientId);
+                Console.WriteLine($"⚠️ No new invoices generated for Client {SelectedClientId}.");
             }
 
             Invoices = (await InvoiceService.GetAllInvoicesAsync()).ToList();
@@ -393,9 +430,10 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error generating invoice: {ex.Message}");
+            Console.WriteLine($"❌ Error generating invoice: {ex.Message}");
         }
     }
+
 
     private async Task DownloadInvoice(int clientId)
     {
@@ -447,8 +485,14 @@
         {
             modalInvoiceId = invoice.InvoiceId;
             modalClientName = clientName;
-            TotalAmount = invoice.TotalAmount;
-            PaymentAmount = invoice.PaidAmount; // Start with already paid amount
+
+            // Check if there is a remaining balance
+            decimal remainingAmount = invoice.TotalAmount - invoice.PaidAmount;
+
+            // If a partial payment exists, set TotalAmount to the remaining amount
+            TotalAmount = remainingAmount > 0 ? remainingAmount : invoice.TotalAmount;
+
+            PaymentAmount = 0; // Reset payment input
             MarkAsPaidErrorMessage = string.Empty;
         }
         else
@@ -460,6 +504,7 @@
 
         isMarkAsPaidModalVisible = true;
     }
+
 
     private async Task ConfirmMarkAsPaid()
     {
