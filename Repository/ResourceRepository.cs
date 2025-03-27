@@ -113,7 +113,7 @@ namespace Client_Invoice_System.Repository
                 return await context.Resources
                     .Include(r => r.Client)
                     .Include(r => r.Employee)
-                    .Include(r => r.OwnerProfile)  // ✅ Ensure OwnerProfile is included
+                    .Include(r => r.OwnerProfile)  
                     .ToListAsync();
             }
             catch (Exception ex)

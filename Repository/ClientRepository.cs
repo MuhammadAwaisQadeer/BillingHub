@@ -22,7 +22,14 @@ namespace Client_Invoice_System.Repository
                 .AsNoTracking()
                 .ToListAsync();
         }
-
+        //public async Task<List<Client>> GetAllClientsWithCurrencyAsync()
+        //{
+        //    using var context = _contextFactory.CreateDbContext();
+        //    return await context.Clients
+        //        .Include(c => c.CountryCurrency)
+        //        .AsNoTracking()
+        //        .ToListAsync();
+        //}
         public async Task<int> GetActiveClientsCountAsync()
         {
             try

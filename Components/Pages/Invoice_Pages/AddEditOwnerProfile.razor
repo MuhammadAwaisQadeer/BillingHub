@@ -184,7 +184,7 @@
     {
         if (int.TryParse(e.Value?.ToString(), out int selectedId))
         {
-            Owner.CountryCurrencyId = selectedId; // Update the bound value manually
+            Owner.CountryCurrencyId = selectedId; 
             UpdateSelectedCurrency();
         }
     }

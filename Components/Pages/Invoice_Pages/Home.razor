@@ -81,12 +81,10 @@
 </div>
 
 @code {
-    // Backing fields for filter properties
     private DateTime? _selectedDate;
     private int? _selectedMonth;
     private int? _selectedClientId;
 
-    // Filter properties with setters that reload data when changed
     private DateTime? SelectedDate
     {
         get => _selectedDate;
@@ -115,7 +113,6 @@
         }
     }
 
-    // Data for dropdowns, cards, and charts
     private List<Client> Clients = new();
     private List<DashboardCard> DashboardCards = new();
     private List<ChartData> RevenueData = new();
@@ -136,7 +133,6 @@
     {
         try
         {
-            // Get filtered invoices
             var invoices = await InvoiceRepo.GetFilteredInvoicesAsync(SelectedDate, SelectedMonth, SelectedClientId);
             var totalRevenue = invoices.Where(i => i.IsPaid).Sum(i => i.TotalAmount);
             var unpaidInvoices = invoices.Where(i => !i.IsPaid).Sum(i => i.TotalAmount);
@@ -154,7 +150,7 @@
                     var client = await ClientRepo.GetClientWithResourcesAsync(SelectedClientId.Value);
                     activeContracts = client?.Resources?.Count(r => r.IsActive) ?? 0;
 
-                    // ✅ Fetch employees linked to this client
+                    //  Fetch employees linked to this client
                     var employees = await ClientRepo.GetEmployeesByClientIdAsync(SelectedClientId.Value);
                     totalEmployees = employees.Count;
                 }
@@ -191,7 +187,6 @@
 
     private void UpdateChartData(List<Invoice> invoices)
     {
-        // Prepare RevenueData grouped by month
         RevenueData = invoices
             .GroupBy(i => i.CreatedAt.Month)
             .Select(g => new ChartData
@@ -201,11 +196,11 @@
                 })
             .ToList();
 
-        // Prepare InvoiceData for a pie chart: Paid vs Unpaid
         InvoiceData = new List<ChartData>
         {
             new ChartData { Label = "Paid", Value = invoices.Where(i => i.IsPaid).Sum(i => i.TotalAmount) },
-            new ChartData { Label = "Unpaid", Value = invoices.Where(i => !i.IsPaid).Sum(i => i.TotalAmount) }
+            new ChartData { Label = "Unpaid", Value = invoices.Where(i => !i.IsPaid).Sum(i => i.TotalAmount) },
+            new ChartData { Label = "Partial", Value = invoices.Where(i => !i.IsPaid).Sum(i => i.TotalAmount) }
         };
 
         StateHasChanged();

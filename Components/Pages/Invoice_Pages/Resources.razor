@@ -207,11 +207,9 @@
     {
         try
         {
-            // Fetch all resources from repository
             ResourcesList = await ResourceRepository.GetAllAsync();
             var owners = await OwnerProfileRepository.GetAllOwnerProfilesAsync();
 
-            // Map OwnerProfile to each Resource if OwnerProfileId exists
             foreach (var resource in ResourcesList)
             {
                 if (resource.OwnerProfileId != null)

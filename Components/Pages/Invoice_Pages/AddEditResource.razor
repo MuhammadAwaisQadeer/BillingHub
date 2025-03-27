@@ -98,7 +98,7 @@
     {
         Clients = (await ClientRepository.GetAllAsync()).ToList();
         Employees = (await EmployeeRepository.GetAllAsync()).ToList();
-        OwnerProfiles = (await OwnerProfileRepository.GetAllOwnerProfilesAsync()).ToList();  // ✅ Fix: Call on Injected Instance
+        OwnerProfiles = (await OwnerProfileRepository.GetAllOwnerProfilesAsync()).ToList();  
 
         // if (EditingResource.DueDate == null || EditingResource.DueDate == DateTime.MinValue)
         // {

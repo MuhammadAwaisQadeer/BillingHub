@@ -56,7 +56,6 @@ namespace Client_Invoice_System.Repository
                 .FirstOrDefaultAsync(e => e.EmployeeId == employeeId);
         }
 
-        // Add new employee
         public override async Task AddAsync(Employee employee)
         {
             using var context = _contextFactory.CreateDbContext();
@@ -64,7 +63,6 @@ namespace Client_Invoice_System.Repository
             await context.SaveChangesAsync();
         }
 
-        // Update existing employee
         public override async Task UpdateAsync(Employee employee)
         {
             using var context = _contextFactory.CreateDbContext();
@@ -72,7 +70,6 @@ namespace Client_Invoice_System.Repository
             await context.SaveChangesAsync();
         }
 
-        // Delete employee by ID
         public override async Task DeleteAsync(int employeeId)
         {
             using var context = _contextFactory.CreateDbContext();

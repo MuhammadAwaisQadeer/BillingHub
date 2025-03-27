@@ -15,12 +15,9 @@
 </div>
 <h3 class="mb-4 fw-bold">Invoice Management</h3>
 
-<!-- Client Selection and Generate Invoice Button -->
-<!-- Filter Section: Client Selection, Date Range, and Generate Invoice -->
 <div class="row align-items-end mb-3">
-    <!-- Client Selection -->
     <div class="col-lg-3 col-md-4 col-sm-6">
-        <label for="clientSelect">Client</label>
+        <label for="clientSelect" class="fw-bold">Clients</label>
         <select class="form-control" id="clientSelect" @bind="SelectedClientId">
             <option value="">-- Select Client --</option>
             @foreach (var client in Clients)
@@ -32,19 +29,18 @@
         </select>
     </div>
 
-    <!-- Start Date -->
-    <div class="col-lg-2 col-md-2 col-sm-6">
-        <label for="startDate">Start Date</label>
-        <InputDate @bind-Value="StartDate" class="form-control w-35 " />
-    </div>
+    @* <!-- Start Date --> *@
+    @* <div class="col-lg-2 col-md-2 col-sm-6"> *@
+    @*     <label for="startDate">Start Date</label> *@
+    @*     <InputDate @bind-Value="StartDate" class="form-control w-35 " /> *@
+    @* </div> *@
 
-    <!-- End Date -->
-    <div class="col-lg-2 col-md-2 col-sm-6">
-        <label for="endDate">End Date</label>
-        <InputDate @bind-Value="EndDate" class="form-control w-35" />
-    </div>
+    @* <!-- End Date --> *@
+    @* <div class="col-lg-2 col-md-2 col-sm-6"> *@
+    @*     <label for="endDate">End Date</label> *@
+    @*     <InputDate @bind-Value="EndDate" class="form-control w-35" /> *@
+    @* </div> *@
 
-    <!-- Generate Invoice Button -->
     <div class="col-lg-3 col-md-2 col-sm-6">
         <button class="btn btn-primary w-30 mt-4" @onclick="GenerateInvoice">
             Generate Invoice
@@ -55,7 +51,6 @@
 
 <!-- Invoice Table -->
 <div class="card p-3 shadow-lg rounded-4 bg-white">
-    <!-- Search and Filter Controls -->
     <div class="row mb-3 align-items-center">
         <div class="col-12 col-md-6">
             <h4 class="mb-3 fw-bold">Existing Invoices</h4>
@@ -179,19 +174,16 @@
                 Mark invoice for <span class="text-success">@modalClientName</span> as Paid?
             </p>
 
-            <!-- Total Amount -->
             <div class="mb-3">
                 <label class="form-label fw-bold">Total Amount:</label>
                 <input type="number" class="form-control" value="@TotalAmount" disabled />
             </div>
 
-            <!-- Paid Amount -->
             <div class="mb-3">
                 <label class="form-label fw-bold">Paid Amount:</label>
                 <input type="number" class="form-control" @bind="PaymentAmount" step="0.01" />
             </div>
 
-            <!-- Remaining Amount (Auto-calculated) -->
             <div class="mb-3">
                 <label class="form-label fw-bold">Remaining Amount:</label>
                 <input type="number" class="form-control" value="@RemainingAmount" disabled />
@@ -214,7 +206,6 @@
     </div>
 }
 
-<!-- Send Email Confirmation Modal -->
 @if (isSendEmailModalVisible)
 {
     <div class="modal-overlay">
@@ -250,7 +241,6 @@
 @*     </div> *@
 @* } *@
 
-<!-- Delete Invoice Confirmation Modal -->
 @if (isDeleteInvoiceModalVisible)
 {
     <div class="modal-overlay">
@@ -355,7 +345,7 @@
     private bool CanGoNext => currentPage < totalPages;
 
     // Change StartDate and EndDate to nullable so they're optional.
-    private DateTime? StartDate { get; set; } = null; // No date selected initially.
+    private DateTime? StartDate { get; set; } = null; 
     private DateTime? EndDate { get; set; } = null;
 
     private int modalInvoiceId;
@@ -486,13 +476,11 @@
             modalInvoiceId = invoice.InvoiceId;
             modalClientName = clientName;
 
-            // Check if there is a remaining balance
             decimal remainingAmount = invoice.TotalAmount - invoice.PaidAmount;
 
-            // If a partial payment exists, set TotalAmount to the remaining amount
             TotalAmount = remainingAmount > 0 ? remainingAmount : invoice.TotalAmount;
 
-            PaymentAmount = 0; // Reset payment input
+            PaymentAmount = 0; 
             MarkAsPaidErrorMessage = string.Empty;
         }
         else
@@ -510,24 +498,20 @@
     {
         try
         {
-            // Validation: Payment amount must be positive.
             if (PaymentAmount <= 0)
             {
                 MarkAsPaidErrorMessage = "Paid Amount must be greater than 0.";
                 return;
             }
 
-            // Validation: Payment amount must not exceed total amount.
             if (PaymentAmount > TotalAmount)
             {
                 MarkAsPaidErrorMessage = "Paid Amount cannot exceed Total Amount.";
                 return;
             }
 
-            // If validations pass, mark invoice as paid.
             await InvoiceService.MarkInvoiceAsPaidAsync(modalInvoiceId, PaymentAmount);
 
-            // Refresh the invoice list.
             Invoices = (await InvoiceService.GetAllInvoicesAsync()).ToList();
             FilterInvoices();
         }
@@ -535,15 +519,14 @@
         {
             Console.WriteLine($"Error marking invoice as paid: {ex.Message}");
             MarkAsPaidErrorMessage = $"Error: {ex.Message}";
-            return; // Do not close modal if error occurs.
+            return; 
         }
         finally
         {
-            // Only close the modal if there is no error.
             if (string.IsNullOrEmpty(MarkAsPaidErrorMessage))
             {
                 isMarkAsPaidModalVisible = false;
-                PaymentAmount = 0; // Reset input.
+                PaymentAmount = 0; 
             }
             // else{
             //     isMarkAsPaidModalVisible = false;
@@ -681,13 +664,11 @@
     private void OnStartDateChanged(DateTime newStartDate)
     {
         StartDate = newStartDate;
-        // Optionally, call a method to filter your data based on the new start date.
     }
 
     private void OnEndDateChanged(DateTime newEndDate)
     {
         EndDate = newEndDate;
-        // Optionally, call a method to filter your data based on the new end date.
     }
 
    

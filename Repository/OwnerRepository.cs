@@ -14,7 +14,6 @@ namespace Client_Invoice_System.Repository
         public OwnerRepository(IDbContextFactory<ApplicationDbContext> contextFactory)
             : base(contextFactory) { }
 
-        // Get All Owner Profiles
         public async Task<IEnumerable<OwnerProfile>> GetAllOwnerProfilesAsync()
         {
             using var context = _contextFactory.CreateDbContext();
@@ -24,7 +23,6 @@ namespace Client_Invoice_System.Repository
             return owners;
         }
 
-        // Alternative method to get all owners (if needed)
         public async Task<IEnumerable<OwnerProfile>> GetAllOwnersAsync()
         {
             using var context = _contextFactory.CreateDbContext();
@@ -33,7 +31,6 @@ namespace Client_Invoice_System.Repository
                                 .ToListAsync();
         }
 
-        // Get a Single Owner Profile by ID
         public async Task<OwnerProfile> GetOwnerProfileByIdAsync(int ownerId)
         {
             using var context = _contextFactory.CreateDbContext();
@@ -42,14 +39,12 @@ namespace Client_Invoice_System.Repository
                                 .FirstOrDefaultAsync(o => o.Id == ownerId);
         }
 
-        // Get First Owner Profile (if any), or return a new instance
         public async Task<OwnerProfile> GetOwnerProfileAsync()
         {
             using var context = _contextFactory.CreateDbContext();
             return await context.Set<OwnerProfile>().AsNoTracking().FirstOrDefaultAsync() ?? new OwnerProfile();
         }
 
-        // Add a New Owner Profile
         public async Task AddOwnerProfileAsync(OwnerProfile owner)
         {
             using var context = _contextFactory.CreateDbContext();
@@ -64,14 +59,12 @@ namespace Client_Invoice_System.Repository
             }
         }
 
-        // Update Owner Profile
         public async Task UpdateOwnerProfileAsync(OwnerProfile owner)
         {
             using var context = _contextFactory.CreateDbContext();
             var existingOwner = await context.Set<OwnerProfile>().FirstOrDefaultAsync(o => o.Id == owner.Id);
             if (existingOwner != null)
             {
-                // Update the necessary properties
                 existingOwner.OwnerName = owner.OwnerName;
                 existingOwner.BillingEmail = owner.BillingEmail;
                 existingOwner.PhoneNumber = owner.PhoneNumber;
@@ -91,7 +84,6 @@ namespace Client_Invoice_System.Repository
             await context.SaveChangesAsync();
         }
 
-        // Delete Owner Profile
         public async Task DeleteOwnerProfileAsync(int ownerId)
         {
             using var context = _contextFactory.CreateDbContext();

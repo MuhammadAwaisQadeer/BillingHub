@@ -26,6 +26,7 @@ namespace Client_Invoice_System.Services
             {
                 return await _context.Invoices
                     .Include(i => i.Client)
+                    .ThenInclude(r=>r.CountryCurrency)
                     .Include(i => i.InvoiceItems)
                         .ThenInclude(ii => ii.Resource)
                             .ThenInclude(r => r.Employee)
@@ -369,7 +370,6 @@ namespace Client_Invoice_System.Services
 
 
 
-                // Retrieve the OwnerProfile from the first invoice item (fallback to default if null)
                 var ownerProfile = invoiceItems.FirstOrDefault()?.Resource.OwnerProfile ?? new OwnerProfile
                 {
                     OwnerName = "Default Owner",
