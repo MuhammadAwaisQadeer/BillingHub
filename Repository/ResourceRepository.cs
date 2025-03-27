@@ -168,6 +168,7 @@ namespace Client_Invoice_System.Repository
                     existingResource.EmployeeId = resource.EmployeeId;
                     existingResource.ConsumedTotalHours = resource.ConsumedTotalHours;
                     existingResource.IsActive = resource.IsActive;
+                    existingResource.OwnerProfileId = resource.OwnerProfileId;
 
                     await context.SaveChangesAsync();
                 }

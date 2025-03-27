@@ -29,17 +29,17 @@
         </select>
     </div>
 
-    @* <!-- Start Date --> *@
-    @* <div class="col-lg-2 col-md-2 col-sm-6"> *@
-    @*     <label for="startDate">Start Date</label> *@
-    @*     <InputDate @bind-Value="StartDate" class="form-control w-35 " /> *@
-    @* </div> *@
+    <!-- Start Date --> 
+    <div class="col-lg-2 col-md-2 col-sm-6"> 
+         <label for="startDate">Start Date</label> 
+         <InputDate @bind-Value="StartDate" class="form-control w-35 " /> 
+    </div>
 
-    @* <!-- End Date --> *@
-    @* <div class="col-lg-2 col-md-2 col-sm-6"> *@
-    @*     <label for="endDate">End Date</label> *@
-    @*     <InputDate @bind-Value="EndDate" class="form-control w-35" /> *@
-    @* </div> *@
+     <!-- End Date --> 
+     <div class="col-lg-2 col-md-2 col-sm-6"> 
+         <label for="endDate">End Date</label> 
+     <InputDate @bind-Value="EndDate" class="form-control w-35" />
+     </div>
 
     <div class="col-lg-3 col-md-2 col-sm-6">
         <button class="btn btn-primary w-30 mt-4" @onclick="GenerateInvoice">
@@ -61,7 +61,7 @@
                     <option value="">All</option>
                     <option value="true">Paid</option>
                     <option value="Partial">Partially Paid</option>
-                    <option value="Unpaid">Unpaid</option>
+                    <option value="Pending">Unpaid</option>
                 </select>
                 <select class="form-control w-auto" @onchange="GetInvoiceByEmailStatus">
                     <option value="">All</option>
@@ -618,18 +618,19 @@
         SelectedEmailStatus = e.Value?.ToString();
         ApplyFilters();
     }
-
     private void ApplyFilters()
     {
-        bool? statusFilter = bool.TryParse(SelectedStatus, out bool parsedStatus) ? parsedStatus : (bool?)null;
-
         Invoices = AllInvoices
-            .Where(i => (!statusFilter.HasValue || i.IsPaid == statusFilter.Value) &&
+            .Where(i => (string.IsNullOrEmpty(SelectedStatus) ||
+                        (SelectedStatus == "true" && i.InvoiceStatuses == InvoiceStatus.Paid) ||
+                        (SelectedStatus == "Partial" && i.InvoiceStatuses == InvoiceStatus.PartiallyPaid) ||
+                        (SelectedStatus == "Pending" && i.InvoiceStatuses == InvoiceStatus.Pending)) &&
                         (string.IsNullOrEmpty(SelectedEmailStatus) || i.EmailStatus == SelectedEmailStatus))
             .ToList();
 
         FilterInvoices();
     }
+
 
     private void PreviousPage()
     {
