@@ -415,7 +415,6 @@
                 Console.WriteLine($"⚠️ No new invoices generated for Client {SelectedClientId}.");
             }
 
-            // Fetch all invoices again and apply filtering
             Invoices = (await InvoiceService.GetAllInvoicesAsync()).ToList();
             FilterInvoices();
         }
