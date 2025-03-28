@@ -210,18 +210,31 @@
 {
     <div class="modal-overlay">
         <div class="delete-modal">
-            <p class="fw-bold">Are you sure you want to send an email to <span class="text-primary">@modalClientName</span>?</p>
-            <div class="d-flex justify-content-center gap-3">
-                <button class="btn btn-success" @onclick="ConfirmSendEmail">
-                    <i class="bi bi-envelope-check me-1"></i> Yes, Send
-                </button>
-                <button class="btn btn-secondary" @onclick="CancelSendEmail">
-                    <i class="bi bi-x-circle me-1"></i> Cancel
-                </button>
-            </div>
+            @if (!isEmailSending)
+            {
+                <p class="fw-bold">Are you sure you want to send an email to <span class="text-primary">@modalClientName</span>?</p>
+                <div class="d-flex justify-content-center gap-3">
+                    <button class="btn btn-success" @onclick="ConfirmSendEmail" disabled="@(isEmailSending)">
+                        <i class="bi bi-envelope-check me-1"></i> Yes, Send
+                    </button>
+                    <button class="btn btn-secondary" @onclick="CancelSendEmail" disabled="@(isEmailSending)">
+                        <i class="bi bi-x-circle me-1"></i> Cancel
+                    </button>
+                </div>
+            }
+            else
+            {
+                <div class="text-center">
+                    <p class="fw-bold text-primary">📨 Sending Email...</p>
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
         </div>
     </div>
 }
+
 
 @* <!-- Mark as Paid Confirmation Modal --> *@
 @* @if (isMarkAsPaidModalVisible) *@
@@ -339,7 +352,7 @@
     private bool isDeleteInvoiceModalVisible = false;
     private string modalClientName = string.Empty;
     private string MarkAsPaidErrorMessage = string.Empty;
-
+    private bool isEmailSending = false;
     private int selectedPageSize = 5;
     private bool CanGoPrevious => currentPage > 1;
     private bool CanGoNext => currentPage < totalPages;
@@ -451,9 +464,11 @@
     {
         try
         {
+            isEmailSending = true; // Show loading state
             bool emailSent = await InvoiceService.SendInvoiceToClientAsync(modalClientId, StartDate, EndDate);
             Console.WriteLine(emailSent ? "📧 Invoice email sent successfully." : "❌ Failed to send invoice email.");
 
+            // Refresh invoice list
             Invoices = (await InvoiceService.GetAllInvoicesAsync()).ToList();
             FilterInvoices();
         }
@@ -463,10 +478,10 @@
         }
         finally
         {
-            isSendEmailModalVisible = false;
+            isEmailSending = false;
+            isSendEmailModalVisible = false; // Close modal after email is sent
         }
     }
-
     private void ShowMarkAsPaidModal(int invoiceId, string clientName)
     {
         var invoice = Invoices.FirstOrDefault(i => i.InvoiceId == invoiceId);

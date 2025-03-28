@@ -17,8 +17,8 @@ namespace Client_Invoice_System.Services
             _config = config;
         }
 
-        public async Task<bool> 
-            SendInvoiceEmailAsync(string recipientEmail, byte[] invoicePdf, string fileName)
+
+        public async Task<bool> SendInvoiceEmailAsync(string recipientEmail, byte[] invoicePdf, string fileName)
         {
             try
             {
