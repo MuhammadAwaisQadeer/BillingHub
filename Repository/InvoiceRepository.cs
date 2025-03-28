@@ -20,6 +20,7 @@ namespace Client_Invoice_System.Repository
             IQueryable<Invoice> query = context.Invoices
                 .Include(i => i.Client)
                 .Include(i => i.InvoiceItems)
+                .Where(i => !i.IsDeleted) // Exclude soft-deleted invoices
                 .AsNoTracking();
 
             if (date.HasValue)
@@ -39,19 +40,24 @@ namespace Client_Invoice_System.Repository
             using var context = _contextFactory.CreateDbContext();
             return await context.Invoices
                 .Include(i => i.InvoiceItems)
+                .Where(i => !i.IsDeleted) // Exclude soft-deleted invoices
                 .FirstOrDefaultAsync(i => i.InvoiceId == invoiceId);
         }
 
         public async Task<decimal> GetTotalRevenueAsync()
         {
             using var context = _contextFactory.CreateDbContext();
-            return await context.Invoices.SumAsync(i => (decimal?)i.PaidAmount) ?? 0;
+            return await context.Invoices
+                .Where(i => !i.IsDeleted) // Exclude soft-deleted invoices
+                .SumAsync(i => (decimal?)i.PaidAmount) ?? 0;
         }
 
         public async Task<decimal> GetUnpaidInvoicesAmountAsync()
         {
             using var context = _contextFactory.CreateDbContext();
-            return await context.Invoices.SumAsync(i => (decimal?)i.RemainingAmount) ?? 0;
+            return await context.Invoices
+                .Where(i => !i.IsDeleted) // Exclude soft-deleted invoices
+                .SumAsync(i => (decimal?)i.RemainingAmount) ?? 0;
         }
 
         public async Task UpdateInvoiceAmountsAsync(int invoiceId)
@@ -59,12 +65,25 @@ namespace Client_Invoice_System.Repository
             using var context = _contextFactory.CreateDbContext();
             var invoice = await context.Invoices
                 .Include(i => i.InvoiceItems)
+                .Where(i => !i.IsDeleted) // Exclude soft-deleted invoices
                 .FirstOrDefaultAsync(i => i.InvoiceId == invoiceId);
 
             if (invoice != null)
             {
                 invoice.TotalAmount = invoice.InvoiceItems.Sum(item => item.TotalAmount);
                 invoice.RemainingAmount = invoice.TotalAmount - invoice.PaidAmount;
+                await context.SaveChangesAsync();
+            }
+        }
+
+        // Override DeleteAsync to implement soft delete
+        public override async Task DeleteAsync(int invoiceId)
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var invoice = await context.Invoices.FindAsync(invoiceId);
+            if (invoice != null)
+            {
+                invoice.IsDeleted = true;
                 await context.SaveChangesAsync();
             }
         }

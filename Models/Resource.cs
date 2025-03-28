@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Client_Invoice_System.Models
 {
-    public class Resource
+    public class Resource : ISoftDeletable
     {
         [Key]
         public int ResourceId { get; set; }
@@ -33,6 +33,7 @@ namespace Client_Invoice_System.Models
         public int OwnerProfileId { get; set; }
         [ForeignKey("OwnerProfileId")]
         public virtual OwnerProfile OwnerProfile { get; set; }
+        public bool IsDeleted { get; set; } = false;
     }
 
 }

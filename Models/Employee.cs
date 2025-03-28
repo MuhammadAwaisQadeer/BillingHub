@@ -15,7 +15,7 @@ namespace Client_Invoice_System.Models
         Admin
     }
 
-    public class Employee
+    public class Employee : ISoftDeletable
     {
         [Key]
         public int EmployeeId { get; set; }
@@ -32,5 +32,6 @@ namespace Client_Invoice_System.Models
 
         // Navigation Property
         public virtual ICollection<Resource> Resources { get; set; }
+        public bool IsDeleted { get; set; } = false;
     }
 }

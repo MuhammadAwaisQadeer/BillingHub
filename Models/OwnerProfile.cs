@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Client_Invoice_System.Models
 {
-    public class OwnerProfile
+    public class OwnerProfile : ISoftDeletable
     {
         [Key]
         public int Id { get; set; }
@@ -50,5 +50,6 @@ namespace Client_Invoice_System.Models
         [Required(ErrorMessage = "Account Number is required")]
         public string AccountNumber { get; set; }
         public virtual ICollection<Resource> Resources { get; set; } = new List<Resource>();
+        public bool IsDeleted { get; set; } = false;
     }
 }

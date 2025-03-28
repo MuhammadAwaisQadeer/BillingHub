@@ -9,6 +9,6 @@ namespace Client_Invoice_System.Repository
         Task<T> GetByIdAsync(int id);
         Task AddAsync(T entity);
         Task UpdateAsync(T entity);
-        Task DeleteAsync(int id);
+        Task DeleteAsync(int id); 
     }
 }

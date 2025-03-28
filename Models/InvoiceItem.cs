@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Client_Invoice_System.Models
 {
-    public class InvoiceItem
+    public class InvoiceItem : ISoftDeletable
     {
         [Key]
         public int Id { get; set; }
@@ -23,5 +23,6 @@ namespace Client_Invoice_System.Models
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal TotalAmount => ConsumedHours * RatePerHour;
+        public bool IsDeleted { get; set; } = false;
     }
 }

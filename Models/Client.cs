@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Client_Invoice_System.Models
 {
-    public class Client
+    public class Client : ISoftDeletable
     {
 
 
@@ -39,5 +39,7 @@ namespace Client_Invoice_System.Models
         public virtual ActiveClient ActiveClient { get; set; }
         public virtual ICollection<Resource> Resources { get; set; }
         public virtual ICollection<ClientProfileCrossTable> ClientProfileCrosses { get; set; }
+
+        public bool IsDeleted { get; set; } = false;
     }
 }

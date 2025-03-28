@@ -2,6 +2,7 @@
 using Client_Invoice_System.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace Client_Invoice_System.Data;
 
@@ -20,6 +21,16 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType))
+            {
+                modelBuilder.Entity(entityType.ClrType)
+                    .HasQueryFilter(ConvertFilterExpression(entityType.ClrType));
+            }
+        }
+
 
         // ✅ Invoice & InvoiceItem Relationship
         modelBuilder.Entity<InvoiceItem>()
@@ -109,5 +120,38 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .WithMany(o => o.Resources)
             .HasForeignKey(r => r.OwnerProfileId)
             .OnDelete(DeleteBehavior.Restrict);
+
+
+
+
+    }
+    public override int SaveChanges()
+    {
+        HandleSoftDelete();
+        return base.SaveChanges();
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        HandleSoftDelete();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    private void HandleSoftDelete()
+    {
+        foreach (var entry in ChangeTracker.Entries()
+                 .Where(e => e.State == EntityState.Deleted && e.Entity is ISoftDeletable))
+        {
+            entry.State = EntityState.Modified;
+            ((ISoftDeletable)entry.Entity).IsDeleted = true;
+        }
+    }
+
+    private static LambdaExpression ConvertFilterExpression(Type entityType)
+    {
+        var parameter = Expression.Parameter(entityType, "e");
+        var property = Expression.Property(parameter, nameof(ISoftDeletable.IsDeleted));
+        var condition = Expression.Equal(property, Expression.Constant(false));
+        return Expression.Lambda(condition, parameter);
     }
 }

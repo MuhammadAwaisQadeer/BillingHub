@@ -18,24 +18,18 @@ namespace Client_Invoice_System.Repository
         {
             using var context = _contextFactory.CreateDbContext();
             return await context.Clients
+                .Where(c => !c.IsDeleted)  // ✅ Exclude soft-deleted records
                 .Include(c => c.CountryCurrency)
                 .AsNoTracking()
                 .ToListAsync();
         }
-        //public async Task<List<Client>> GetAllClientsWithCurrencyAsync()
-        //{
-        //    using var context = _contextFactory.CreateDbContext();
-        //    return await context.Clients
-        //        .Include(c => c.CountryCurrency)
-        //        .AsNoTracking()
-        //        .ToListAsync();
-        //}
+
         public async Task<int> GetActiveClientsCountAsync()
         {
             try
             {
                 using var context = _contextFactory.CreateDbContext();
-                return await context.Clients.CountAsync();
+                return await context.Clients.CountAsync(c => !c.IsDeleted);  // ✅ Exclude soft-deleted clients
             }
             catch (Exception ex)
             {
@@ -49,7 +43,7 @@ namespace Client_Invoice_System.Repository
             try
             {
                 using var context = _contextFactory.CreateDbContext();
-                return await context.Employees.CountAsync();
+                return await context.Employees.CountAsync(e => !e.IsDeleted);  // ✅ Exclude soft-deleted employees
             }
             catch (Exception ex)
             {
@@ -63,7 +57,7 @@ namespace Client_Invoice_System.Repository
             try
             {
                 using var context = _contextFactory.CreateDbContext();
-                return await context.Resources.CountAsync(r => r.IsActive);
+                return await context.Resources.CountAsync(r => r.IsActive && !r.IsDeleted);  // ✅ Exclude soft-deleted resources
             }
             catch (Exception ex)
             {
@@ -77,7 +71,7 @@ namespace Client_Invoice_System.Repository
             try
             {
                 using var context = _contextFactory.CreateDbContext();
-                return await context.Clients.AnyAsync(c => c.Email == email);
+                return await context.Clients.AnyAsync(c => c.Email == email && !c.IsDeleted);  // ✅ Exclude soft-deleted clients
             }
             catch (Exception ex)
             {
@@ -92,6 +86,7 @@ namespace Client_Invoice_System.Repository
             {
                 using var context = _contextFactory.CreateDbContext();
                 return await context.Clients
+                    .Where(c => !c.IsDeleted)  // ✅ Exclude soft-deleted clients
                     .Include(c => c.Resources)
                     .FirstOrDefaultAsync(c => c.ClientId == clientId);
             }
@@ -108,7 +103,7 @@ namespace Client_Invoice_System.Repository
             {
                 using var context = _contextFactory.CreateDbContext();
                 return await context.Resources
-                    .Where(r => r.ClientId == clientId)
+                    .Where(r => r.ClientId == clientId && !r.IsDeleted)  // ✅ Exclude soft-deleted resources
                     .Select(r => r.Employee)
                     .Distinct()
                     .ToListAsync();
@@ -120,23 +115,40 @@ namespace Client_Invoice_System.Repository
             }
         }
 
+        /// <summary>
+        /// Soft delete a client by setting IsDeleted = true instead of removing from the database.
+        /// </summary>
         public override async Task DeleteAsync(int clientId)
         {
             try
             {
                 using var context = _contextFactory.CreateDbContext();
-                var client = await context.Clients.FindAsync(clientId);
+                var client = await context.Clients
+                    .Include(c => c.Resources)  // ✅ Include related entities
+                    .FirstOrDefaultAsync(c => c.ClientId == clientId);
+
                 if (client == null)
                 {
                     Console.WriteLine($"Client with ID {clientId} not found.");
                     return;
                 }
-                context.Clients.Remove(client);
+
+                client.IsDeleted = true;
+
+                // ✅ Soft delete related entities
+                if (client.Resources != null)
+                {
+                    foreach (var resource in client.Resources)
+                    {
+                        resource.IsDeleted = true;
+                    }
+                }
+
                 await context.SaveChangesAsync();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error deleting client: {ex.Message}");
+                Console.WriteLine($"Error soft deleting client: {ex.Message}");
             }
         }
 
@@ -145,7 +157,9 @@ namespace Client_Invoice_System.Repository
             try
             {
                 using var context = _contextFactory.CreateDbContext();
-                return await context.Clients.FindAsync(clientId);
+                return await context.Clients
+                    .Where(c => !c.IsDeleted)  // ✅ Exclude soft-deleted clients
+                    .FirstOrDefaultAsync(c => c.ClientId == clientId);
             }
             catch (Exception ex)
             {
@@ -179,6 +193,43 @@ namespace Client_Invoice_System.Repository
             catch (Exception ex)
             {
                 Console.WriteLine($"Error updating client: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Restore a soft-deleted client.
+        /// </summary>
+        public async Task RestoreClientAsync(int clientId)
+        {
+            try
+            {
+                using var context = _contextFactory.CreateDbContext();
+                var client = await context.Clients
+                    .Include(c => c.Resources)
+                    .FirstOrDefaultAsync(c => c.ClientId == clientId && c.IsDeleted);
+
+                if (client == null)
+                {
+                    Console.WriteLine($"Client with ID {clientId} is not found or not deleted.");
+                    return;
+                }
+
+                client.IsDeleted = false;
+
+                // ✅ Restore related entities
+                if (client.Resources != null)
+                {
+                    foreach (var resource in client.Resources)
+                    {
+                        resource.IsDeleted = false;
+                    }
+                }
+
+                await context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error restoring client: {ex.Message}");
             }
         }
     }

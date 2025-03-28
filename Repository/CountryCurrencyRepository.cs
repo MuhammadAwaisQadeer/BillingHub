@@ -17,7 +17,9 @@ namespace Client_Invoice_System.Repository
 
         public async Task<List<CountryCurrency>> GetAllAsync()
         {
-            return await _context.CountryCurrencies.ToListAsync();
+            return await _context.CountryCurrencies
+                .Where(cc => !cc.IsDeleted)
+                .ToListAsync();
         }
     }
 }

@@ -404,7 +404,7 @@
         {
             if (SelectedClientId <= 0) return;
 
-            var newInvoiceIds = await InvoiceService.SaveInvoiceAsync(SelectedClientId);
+            var newInvoiceIds = await InvoiceService.SaveInvoiceAsync(SelectedClientId, StartDate, EndDate);
 
             if (newInvoiceIds.Any())
             {
@@ -415,6 +415,7 @@
                 Console.WriteLine($"⚠️ No new invoices generated for Client {SelectedClientId}.");
             }
 
+            // Fetch all invoices again and apply filtering
             Invoices = (await InvoiceService.GetAllInvoicesAsync()).ToList();
             FilterInvoices();
         }
@@ -423,7 +424,6 @@
             Console.WriteLine($"❌ Error generating invoice: {ex.Message}");
         }
     }
-
 
     private async Task DownloadInvoice(int clientId)
     {

@@ -2,11 +2,11 @@
 using Client_Invoice_System.Models;
 using Client_Invoice_System.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 namespace Client_Invoice_System.Repository
 {
@@ -27,12 +27,12 @@ namespace Client_Invoice_System.Repository
                 using var context = _contextFactory.CreateDbContext();
                 return await context.Resources
                     .Include(r => r.Employee)
-                    .Where(r => r.ClientId == clientId)
+                    .Where(r => r.ClientId == clientId && !r.IsDeleted) // Exclude soft-deleted resources
                     .ToListAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error retrieving resources for client {clientId}: {ex.Message}");
+                _logger.LogError(ex, $"Error retrieving resources for client {clientId}");
                 return new List<Resource>();
             }
         }
@@ -42,12 +42,15 @@ namespace Client_Invoice_System.Repository
             try
             {
                 using var context = _contextFactory.CreateDbContext();
-                var resource = await context.Resources.FindAsync(resourceId);
+                var resource = await context.Resources
+                    .Where(r => r.ResourceId == resourceId && !r.IsDeleted)
+                    .FirstOrDefaultAsync();
+
                 return resource?.ConsumedTotalHours ?? 0;
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error retrieving total hours for resource {resourceId}: {ex.Message}");
+                _logger.LogError(ex, $"Error retrieving total hours for resource {resourceId}");
                 return 0;
             }
         }
@@ -59,14 +62,14 @@ namespace Client_Invoice_System.Repository
                 using var context = _contextFactory.CreateDbContext();
                 var resources = await context.Resources
                     .Include(r => r.Employee)
-                    .Where(r => r.ClientId == clientId)
+                    .Where(r => r.ClientId == clientId && !r.IsDeleted)
                     .ToListAsync();
 
-                return resources.Sum(r => r.ConsumedTotalHours * r.Employee.HourlyRate);
+                return resources.Sum(r => r.ConsumedTotalHours * (r.Employee?.HourlyRate ?? 0));
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error calculating billing for client {clientId}: {ex.Message}");
+                _logger.LogError(ex, $"Error calculating billing for client {clientId}");
                 return 0;
             }
         }
@@ -79,11 +82,12 @@ namespace Client_Invoice_System.Repository
                 return await context.Resources
                     .Include(r => r.Client)
                     .Include(r => r.Employee)
+                    .Where(r => !r.IsDeleted)
                     .ToListAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error retrieving all resources with details: {ex.Message}");
+                _logger.LogError(ex, "Error retrieving all resources with details");
                 return new List<Resource>();
             }
         }
@@ -96,11 +100,12 @@ namespace Client_Invoice_System.Repository
                 return await context.Resources
                     .Include(r => r.Client)
                     .Include(r => r.Employee)
-                    .FirstOrDefaultAsync(r => r.ResourceId == resourceId);
+                    .Where(r => r.ResourceId == resourceId && !r.IsDeleted)
+                    .FirstOrDefaultAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error retrieving resource details for {resourceId}: {ex.Message}");
+                _logger.LogError(ex, $"Error retrieving resource details for {resourceId}");
                 return null;
             }
         }
@@ -113,16 +118,16 @@ namespace Client_Invoice_System.Repository
                 return await context.Resources
                     .Include(r => r.Client)
                     .Include(r => r.Employee)
-                    .Include(r => r.OwnerProfile)  
+                    .Include(r => r.OwnerProfile)
+                    .Where(r => !r.IsDeleted)
                     .ToListAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error retrieving all resources: {ex.Message}");
+                _logger.LogError(ex, "Error retrieving all resources");
                 return new List<Resource>();
             }
         }
-
 
         public async Task<Resource?> GetByIdAsync(int resourceId)
         {
@@ -132,11 +137,12 @@ namespace Client_Invoice_System.Repository
                 return await context.Resources
                     .Include(r => r.Client)
                     .Include(r => r.Employee)
-                    .FirstOrDefaultAsync(r => r.ResourceId == resourceId);
+                    .Where(r => r.ResourceId == resourceId && !r.IsDeleted)
+                    .FirstOrDefaultAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error retrieving resource by ID {resourceId}: {ex.Message}");
+                _logger.LogError(ex, $"Error retrieving resource by ID {resourceId}");
                 return null;
             }
         }
@@ -151,7 +157,7 @@ namespace Client_Invoice_System.Repository
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error adding resource: {ex.Message}");
+                _logger.LogError(ex, "Error adding resource");
             }
         }
 
@@ -160,7 +166,10 @@ namespace Client_Invoice_System.Repository
             try
             {
                 using var context = _contextFactory.CreateDbContext();
-                var existingResource = await context.Resources.FindAsync(resource.ResourceId);
+                var existingResource = await context.Resources
+                    .Where(r => r.ResourceId == resource.ResourceId && !r.IsDeleted)
+                    .FirstOrDefaultAsync();
+
                 if (existingResource != null)
                 {
                     existingResource.ClientId = resource.ClientId;
@@ -175,27 +184,29 @@ namespace Client_Invoice_System.Repository
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error updating resource {resource.ResourceId}: {ex.Message}");
+                _logger.LogError(ex, $"Error updating resource {resource.ResourceId}");
             }
         }
 
+        // Soft delete implementation
         public async Task DeleteAsync(int resourceId)
         {
             try
             {
                 using var context = _contextFactory.CreateDbContext();
                 var resource = await context.Resources
-                    .Include(r => r.Client)
-                    .FirstOrDefaultAsync(r => r.ResourceId == resourceId);
+                    .Where(r => r.ResourceId == resourceId && !r.IsDeleted)
+                    .FirstOrDefaultAsync();
+
                 if (resource != null)
                 {
-                    context.Resources.Remove(resource);
+                    resource.IsDeleted = true;
                     await context.SaveChangesAsync();
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error deleting resource {resourceId}: {ex.Message}");
+                _logger.LogError(ex, $"Error deleting resource {resourceId}");
             }
         }
     }

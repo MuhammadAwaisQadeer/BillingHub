@@ -2,7 +2,7 @@
 
 namespace Client_Invoice_System.Models
 {
-    public class CountryCurrency
+    public class CountryCurrency : ISoftDeletable
     {
         [Key]
         public int Id { get; set; }
@@ -18,5 +18,6 @@ namespace Client_Invoice_System.Models
 
         [Required, StringLength(3)]
         public string CurrencyCode { get; set; } // Example: USD, EUR, GBP
+        public bool IsDeleted { get; set; } = false;
     }
 }

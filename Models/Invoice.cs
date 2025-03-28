@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Client_Invoice_System.Models
 {
-    public class Invoice
+    public class Invoice : ISoftDeletable
     {
         [Key]
         public int InvoiceId { get; set; }
@@ -38,6 +38,7 @@ namespace Client_Invoice_System.Models
         public bool IsPaid => InvoiceStatuses == InvoiceStatus.Paid;
         // ✅ Linked resources under invoice
         public virtual ICollection<InvoiceItem> InvoiceItems { get; set; } = new List<InvoiceItem>();
+        public bool IsDeleted { get; set; } = false;
     }
 
     public enum InvoiceStatus

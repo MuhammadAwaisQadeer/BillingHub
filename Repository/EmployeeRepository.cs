@@ -13,12 +13,12 @@ namespace Client_Invoice_System.Repository
         public EmployeeRepository(IDbContextFactory<ApplicationDbContext> contextFactory)
             : base(contextFactory) { }
 
-        // Get employees by designation
+        // Get employees by designation (excluding soft-deleted employees)
         public async Task<IEnumerable<Employee>> GetByDesignationAsync(Designation designation)
         {
             using var context = _contextFactory.CreateDbContext();
             return await context.Employees
-                .Where(e => e.Designation == designation)
+                .Where(e => e.Designation == designation && !e.IsDeleted)
                 .AsNoTracking()
                 .ToListAsync();
         }
@@ -30,7 +30,7 @@ namespace Client_Invoice_System.Repository
             var employee = await context.Employees
                 .Include(e => e.Resources)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(e => e.EmployeeId == employeeId);
+                .FirstOrDefaultAsync(e => e.EmployeeId == employeeId && !e.IsDeleted);
 
             if (employee == null || employee.Resources == null)
                 return 0;
@@ -38,22 +38,23 @@ namespace Client_Invoice_System.Repository
             return employee.Resources.Sum(r => r.ConsumedTotalHours * employee.HourlyRate);
         }
 
-        // Get all employees (overriding the generic GetAllAsync for Employee)
+        // Get all employees (excluding soft-deleted employees)
         public async Task<IEnumerable<Employee>> GetAllAsync()
         {
             using var context = _contextFactory.CreateDbContext();
             return await context.Employees
+                .Where(e => !e.IsDeleted)
                 .AsNoTracking()
                 .ToListAsync();
         }
 
-        // Get employee by ID (overriding the generic GetByIdAsync for Employee)
+        // Get employee by ID (excluding soft-deleted employees)
         public override async Task<Employee?> GetByIdAsync(int employeeId)
         {
             using var context = _contextFactory.CreateDbContext();
             return await context.Employees
                 .AsNoTracking()
-                .FirstOrDefaultAsync(e => e.EmployeeId == employeeId);
+                .FirstOrDefaultAsync(e => e.EmployeeId == employeeId && !e.IsDeleted);
         }
 
         public override async Task AddAsync(Employee employee)
@@ -70,13 +71,14 @@ namespace Client_Invoice_System.Repository
             await context.SaveChangesAsync();
         }
 
+        // Soft Delete: Mark employee as deleted instead of removing
         public override async Task DeleteAsync(int employeeId)
         {
             using var context = _contextFactory.CreateDbContext();
             var employee = await context.Employees.FindAsync(employeeId);
             if (employee != null)
             {
-                context.Employees.Remove(employee);
+                employee.IsDeleted = true;
                 await context.SaveChangesAsync();
             }
         }
