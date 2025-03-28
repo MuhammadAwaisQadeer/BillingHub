@@ -4,8 +4,10 @@
 @using Client_Invoice_System.Models
 @using Client_Invoice_System.Repositories
 @using Client_Invoice_System.Repository
+@using Client_Invoice_System.Services
 @inject EmployeeRepository EmployeeRepository
 @inject NavigationManager Navigation
+@inject ToastService ToastService
 <div class="d-flex align-items-center">
     <Breadcrumb />
 </div>
@@ -73,7 +75,8 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading employee: {ex.Message}");
+            ToastService.Notify("error", $"Error loading employee: {ex.Message}");
+            // Console.WriteLine($"Error loading employee: {ex.Message}");
         }
     }
 
@@ -84,19 +87,23 @@
             if (EmployeeId == null)
             {
                 await EmployeeRepository.AddAsync(EditingEmployee);
+                ToastService.Notify("success", "Employee added successfully.");
             }
             else
             {
                 await EmployeeRepository.UpdateAsync(EditingEmployee);
+                ToastService.Notify("success", "Employee updated successfully.");
             }
 
             Navigation.NavigateTo("/employees");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error saving employee: {ex.Message}");
+            ToastService.Notify("error", $"Error saving employee: {ex.Message}");
+            // Console.WriteLine($"Error saving employee: {ex.Message}");
         }
     }
+
 
     private void Cancel()
     {

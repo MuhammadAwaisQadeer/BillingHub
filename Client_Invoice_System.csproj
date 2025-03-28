@@ -19,6 +19,7 @@
     <PackageReference Include="MimeKit" Version="4.11.0" />
     <PackageReference Include="NETCore.MailKit" Version="2.1.0" />
     <PackageReference Include="QuestPDF" Version="2025.1.6" />
+    <PackageReference Include="Radzen.Blazor" Version="6.3.4" />
   </ItemGroup>
 
 </Project>

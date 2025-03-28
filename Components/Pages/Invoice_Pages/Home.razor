@@ -3,8 +3,10 @@
 @using Client_Invoice_System.Models
 @using Client_Invoice_System.Repositories
 @using Client_Invoice_System.Repository
+@using Client_Invoice_System.Services
 @inject ClientRepository ClientRepo
 @inject InvoiceRepository InvoiceRepo
+@inject ToastService ToastService
 @inject IJSRuntime JSRuntime
 
 <div class="container">
@@ -150,7 +152,7 @@
                     var client = await ClientRepo.GetClientWithResourcesAsync(SelectedClientId.Value);
                     activeContracts = client?.Resources?.Count(r => r.IsActive) ?? 0;
 
-                    //  Fetch employees linked to this client
+                    // Fetch employees linked to this client
                     var employees = await ClientRepo.GetEmployeesByClientIdAsync(SelectedClientId.Value);
                     totalEmployees = employees.Count;
                 }
@@ -167,6 +169,7 @@
         }
         catch (Exception ex)
         {
+            // ToastService.Notify("info", $"Error fetching dashboard data: {ex.Message}");
             Console.WriteLine($"❌ Error fetching dashboard data: {ex.Message}");
         }
     }

@@ -8,13 +8,13 @@ using Client_Invoice_System.Repositories;
 using Client_Invoice_System.Repository;
 using Client_Invoice_System.Services;
 using Client_Invoice_System.Helpers;
+using Radzen;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
-
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityUserAccessor>();
 builder.Services.AddScoped<IdentityRedirectManager>();
@@ -32,6 +32,9 @@ builder.Services.AddScoped<ActiveClientRepository>();
 builder.Services.AddScoped<OwnerRepository>();
 builder.Services.AddScoped<CountryCurrencyRepository>();
 builder.Services.AddScoped(typeof(IPaginationService<>), typeof(PaginationService<>));
+builder.Services.AddScoped<ToastService>();
+builder.Services.AddRadzenComponents();
+
 
 builder.Services.AddAuthentication(options =>
     {

@@ -6,7 +6,9 @@
 @using Client_Invoice_System.Repository
 @inject OwnerRepository OwnerRepository
 @inject NavigationManager Navigation
+@inject ToastService ToastService
 @using Client_Invoice_System.Components
+@using Client_Invoice_System.Services
 @inject IPaginationService<OwnerProfile> PaginationService
 
 <div class="d-flex align-items-center">
@@ -240,10 +242,12 @@
             await OwnerRepository.DeleteOwnerProfileAsync(ownerToDelete);
             Owners = (await OwnerRepository.GetAllOwnerProfilesAsync()).ToList(); // Refresh list
             await LoadOwnerProfile();
+            ToastService.Notify("success", $"Owner profile '{ownerToDeleteName}' deleted successfully.");
+
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Error deleting owner profile: {ex.Message}");
+            ToastService.Notify("error", $"❌ Error deleting owner profile: {ex.Message}");
         }
         finally
         {

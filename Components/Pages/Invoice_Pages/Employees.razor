@@ -8,7 +8,9 @@
 @inject EmployeeRepository EmployeeRepository
 @inject NavigationManager Navigation
 @inject IPaginationService<Employee> PaginationService
+@inject ToastService ToastService
 @using Client_Invoice_System.Components
+@using Client_Invoice_System.Services
 
 <div class="d-flex align-items-center">
     <Breadcrumb />
@@ -205,10 +207,10 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading employees: {ex.Message}");
+            ToastService.Notify("error", $"Error loading employees: {ex.Message}");
+            // Console.WriteLine($"Error loading employees: {ex.Message}");
         }
     }
-
     private void NavigateToAddEmployee()
     {
         Navigation.NavigateTo("/add-employee");
@@ -230,18 +232,19 @@
     {
         isDeleteModalVisible = false;
     }
-
     private async Task ConfirmDelete()
     {
         try
         {
             await EmployeeRepository.DeleteAsync(employeeToDelete);
             employees = (await EmployeeRepository.GetAllAsync()).ToList();
-            FilterEmployees(); 
+            FilterEmployees();
+            ToastService.Notify("success", "Employee deleted successfully.");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error deleting employee: {ex.Message}");
+            ToastService.Notify("error", $"Error deleting employee: {ex.Message}");
+            // Console.WriteLine($"Error deleting employee: {ex.Message}");
         }
         finally
         {
@@ -249,37 +252,20 @@
         }
     }
 
-
-    private void LoadPagedEmployees()
-    {
-        pagedEmployees = filteredEmployees.Skip((currentPage - 1) * pageSize).Take(pageSize).ToList();
-    }
-
-    private async Task FilterEmployees()
-    {
-        if (string.IsNullOrWhiteSpace(searchQuery))
-        {
-            filteredEmployees = new List<Employee>(employees);
-        }
-        else
-        {
-            filteredEmployees = employees
-                .Where(e => e.EmployeeName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
-                            (e.Designation != null && e.Designation.ToString().Contains(searchQuery, StringComparison.OrdinalIgnoreCase)))
-                .ToList();
-        }
-        currentPage = 1;
-        await LoadEmployees();
-    }
-
     private async Task LoadEmployees()
     {
-        var result = await PaginationService.GetPagedDataAsync(filteredEmployees.AsQueryable(), currentPage);
-
-        pagedEmployees = result.PagedData;
-
-        totalRecords = result.TotalCount;
-        totalPages = result.TotalPages;
+        try
+        {
+            var result = await PaginationService.GetPagedDataAsync(filteredEmployees.AsQueryable(), currentPage);
+            pagedEmployees = result.PagedData;
+            totalRecords = result.TotalCount;
+            totalPages = result.TotalPages;
+        }
+        catch (Exception ex)
+        {
+            ToastService.Notify("error", $"Error loading paged employees: {ex.Message}");
+            // Console.WriteLine($"Error loading paged employees: {ex.Message}");
+        }
     }
 
     private async Task SetPageSize(ChangeEventArgs e)
@@ -311,6 +297,24 @@
             await LoadEmployees();
         }
     }
+    private async Task FilterEmployees()
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            filteredEmployees = new List<Employee>(employees);
+        }
+        else
+        {
+            filteredEmployees = employees
+                .Where(e => e.EmployeeName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                            (e.Designation != null && e.Designation.ToString().Contains(searchQuery, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+        }
+        currentPage = 1;
+        await LoadEmployees();
+    }
+
+
     private async Task ChangePage(int page)
     {
         if (page >= 1 && page <= totalPages)
@@ -319,6 +323,7 @@
             await LoadEmployees();
         }
     }
+
 
     
 }

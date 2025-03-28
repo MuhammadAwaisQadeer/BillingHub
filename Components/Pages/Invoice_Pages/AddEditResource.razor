@@ -3,12 +3,13 @@
 @rendermode InteractiveServer
 @using Client_Invoice_System.Models
 @using Client_Invoice_System.Repository
+@using Client_Invoice_System.Services
 @inject NavigationManager Navigation
 @inject ResourceRepository ResourceRepository
 @inject EmployeeRepository EmployeeRepository
 @inject ClientRepository ClientRepository
 @inject OwnerRepository OwnerProfileRepository
-
+@inject ToastService ToastService
 <div class="d-flex align-items-center">
     <Breadcrumb />
 </div>
@@ -96,32 +97,48 @@
 
     protected override async Task OnInitializedAsync()
     {
-        Clients = (await ClientRepository.GetAllAsync()).ToList();
-        Employees = (await EmployeeRepository.GetAllAsync()).ToList();
-        OwnerProfiles = (await OwnerProfileRepository.GetAllOwnerProfilesAsync()).ToList();  
-
-        // if (EditingResource.DueDate == null || EditingResource.DueDate == DateTime.MinValue)
-        // {
-        //     EditingResource.DueDate = DateTime.Today;
-        // }
-        if (ResourceId.HasValue)
+        try
         {
-            EditingResource = await ResourceRepository.GetByIdAsync(ResourceId.Value) ?? new();
+            Clients = (await ClientRepository.GetAllAsync()).ToList();
+            Employees = (await EmployeeRepository.GetAllAsync()).ToList();
+            OwnerProfiles = (await OwnerProfileRepository.GetAllOwnerProfilesAsync()).ToList();
+
+            if (ResourceId.HasValue)
+            {
+                EditingResource = await ResourceRepository.GetByIdAsync(ResourceId.Value) ?? new();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.Notify("error", $"Error loading resources: {ex.Message}");
+            // Console.WriteLine($"Error loading resources: {ex.Message}");
         }
     }
+
     private async Task SaveResource()
     {
-        if (EditingResource.ResourceId == 0)
+        try
         {
-            await ResourceRepository.AddAsync(EditingResource);
-        }
-        else
-        {
-            await ResourceRepository.UpdateAsync(EditingResource);
-        }
+            if (EditingResource.ResourceId == 0)
+            {
+                await ResourceRepository.AddAsync(EditingResource);
+                ToastService.Notify("success", "Resource added successfully.");
+            }
+            else
+            {
+                await ResourceRepository.UpdateAsync(EditingResource);
+                ToastService.Notify("success", "Resource updated successfully.");
+            }
 
-        Navigation.NavigateTo("/resources");
+            Navigation.NavigateTo("/resources");
+        }
+        catch (Exception ex)
+        {
+            ToastService.Notify("error", $"Error saving resource: {ex.Message}");
+            // Console.WriteLine($"Error saving resource: {ex.Message}");
+        }
     }
+
 
     private void Cancel()
     {

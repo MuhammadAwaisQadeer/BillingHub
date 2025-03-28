@@ -7,7 +7,9 @@
 @inject ClientRepository ClientRepo
 @inject NavigationManager Navigation
 @using Client_Invoice_System.Components
+@using Client_Invoice_System.Services
 @inject IPaginationService<Client> PaginationService
+@inject ToastService ToastService
 <div class="d-flex align-items-center">
     <Breadcrumb />
 </div>
@@ -233,23 +235,30 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading clients: {ex.Message}");
+            ToastService.Notify("error", $"Error loading clients: {ex.Message}");
         }
     }
     private async Task LoadClients()
     {
-        var filteredData = string.IsNullOrWhiteSpace(searchQuery)
-            ? clients.AsQueryable()
-            : clients.AsQueryable().Where(c =>
-                c.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
-                c.Email.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
-                c.Address.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
-                c.PhoneNumber.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
+        try
+        {
+            var filteredData = string.IsNullOrWhiteSpace(searchQuery)
+                ? clients.AsQueryable()
+                : clients.AsQueryable().Where(c =>
+                    c.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                    c.Email.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                    c.Address.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                    c.PhoneNumber.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
 
-        var result = await PaginationService.GetPagedDataAsync(filteredData, currentPage);
-        pagedClients = result.PagedData;
-        totalRecords = result.TotalCount;
-        totalPages = result.TotalPages;
+            var result = await PaginationService.GetPagedDataAsync(filteredData, currentPage);
+            pagedClients = result.PagedData;
+            totalRecords = result.TotalCount;
+            totalPages = result.TotalPages;
+        }
+        catch (Exception ex)
+        {
+            ToastService.Notify("error", $"Error filtering clients: {ex.Message}");
+        }
     }
 
     private void AddClient()
@@ -334,10 +343,11 @@
             clients = (await ClientRepo.GetAllAsync(true)).ToList();
             FilterClients();
             isDeleteModalVisible = false;
+            ToastService.Notify("success", "Client deleted successfully.");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error deleting client: {ex.Message}");
+            ToastService.Notify("error", $"Error deleting client: {ex.Message}");
         }
     }
 }

@@ -4,13 +4,16 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Client_Invoice_System.Components.Account.Pages
 @using Client_Invoice_System.Components.Layout
+@inject NotificationService NotificationService
 
+<RadzenComponents @rendermode="InteractiveServer" />
 <AuthorizeView>
     <Authorized>
         <div class="page">
             <div class="sidebar">
                 <NavMenu />
             </div>
+            <RadzenNotification />
 
             <main>
                 <div class="top-row px-4 d-flex justify-content-between align-items-center">
