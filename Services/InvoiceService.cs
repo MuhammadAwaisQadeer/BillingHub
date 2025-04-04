@@ -577,7 +577,7 @@ namespace Client_Invoice_System.Services
 
 
 
-        //// Calculates the additional amount for uninvoiced resources for a given client.
+        // Calculates the additional amount for uninvoiced resources for a given client.
         //public async Task<decimal> CalculateAdditionalAmountAsync(int clientId)
         //{
         //    try
@@ -594,7 +594,7 @@ namespace Client_Invoice_System.Services
         //    }
         //}
 
-        //// Retrieves an unpaid invoice (Pending or PartiallyPaid) for a client.
+        // Retrieves an unpaid invoice (Pending or PartiallyPaid) for a client.
         //public async Task<Invoice?> GetUnpaidInvoiceForClientAsync(int clientId)
         //{
         //    try
@@ -611,7 +611,7 @@ namespace Client_Invoice_System.Services
         //    }
         //}
 
-        //// Creates a new invoice for a client and creates InvoiceItem entries for each uninvoiced resource.
+        // Creates a new invoice for a client and creates InvoiceItem entries for each uninvoiced resource.
         //public async Task<int> CreateInvoiceAsync(int clientId)
         //{
         //    try
