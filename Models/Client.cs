@@ -20,7 +20,7 @@ namespace Client_Invoice_System.Models
         public string Address { get; set; }
         [Required(ErrorMessage = "Phone number is required.")]
         [Phone(ErrorMessage = "Invalid phone number format.")]
-        [StringLength(15, ErrorMessage = "Phone number cannot exceed 13 characters.")]
+        [StringLength(20, ErrorMessage = "Phone number cannot exceed 13 characters.")]
         public string PhoneNumber { get; set; }
         [Required(ErrorMessage = "CountryCurrencyId is required.")]
         [Range(1, int.MaxValue, ErrorMessage = "CountryCurrencyId must be a positive integer.")]

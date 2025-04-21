@@ -14,8 +14,8 @@ namespace Client_Invoice_System.Helpers
             using var scope = serviceProvider.CreateScope();
             var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
-            string adminEmail = "admin@gmail.com";  // Change if needed
-            string adminPassword = "Admin@123";     // Change if needed
+            string adminEmail = "admin@gmail.com";  
+            string adminPassword = "Admin@123";     
 
             // Check if Admin User Exists
             var adminUser = await userManager.FindByEmailAsync(adminEmail);

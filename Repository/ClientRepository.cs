@@ -18,7 +18,7 @@ namespace Client_Invoice_System.Repository
         {
             using var context = _contextFactory.CreateDbContext();
             return await context.Clients
-                .Where(c => !c.IsDeleted)  // ✅ Exclude soft-deleted records
+                .Where(c => !c.IsDeleted)  
                 .Include(c => c.CountryCurrency)
                 .AsNoTracking()
                 .ToListAsync();
@@ -29,7 +29,7 @@ namespace Client_Invoice_System.Repository
             try
             {
                 using var context = _contextFactory.CreateDbContext();
-                return await context.Clients.CountAsync(c => !c.IsDeleted);  // ✅ Exclude soft-deleted clients
+                return await context.Clients.CountAsync(c => !c.IsDeleted);  
             }
             catch (Exception ex)
             {
@@ -43,7 +43,7 @@ namespace Client_Invoice_System.Repository
             try
             {
                 using var context = _contextFactory.CreateDbContext();
-                return await context.Employees.CountAsync(e => !e.IsDeleted);  // ✅ Exclude soft-deleted employees
+                return await context.Employees.CountAsync(e => !e.IsDeleted);  
             }
             catch (Exception ex)
             {
@@ -57,7 +57,7 @@ namespace Client_Invoice_System.Repository
             try
             {
                 using var context = _contextFactory.CreateDbContext();
-                return await context.Resources.CountAsync(r => r.IsActive && !r.IsDeleted);  // ✅ Exclude soft-deleted resources
+                return await context.Resources.CountAsync(r => r.IsActive && !r.IsDeleted);  
             }
             catch (Exception ex)
             {
@@ -71,7 +71,7 @@ namespace Client_Invoice_System.Repository
             try
             {
                 using var context = _contextFactory.CreateDbContext();
-                return await context.Clients.AnyAsync(c => c.Email == email && !c.IsDeleted);  // ✅ Exclude soft-deleted clients
+                return await context.Clients.AnyAsync(c => c.Email == email && !c.IsDeleted);  
             }
             catch (Exception ex)
             {
@@ -86,7 +86,7 @@ namespace Client_Invoice_System.Repository
             {
                 using var context = _contextFactory.CreateDbContext();
                 return await context.Clients
-                    .Where(c => !c.IsDeleted)  // ✅ Exclude soft-deleted clients
+                    .Where(c => !c.IsDeleted)  
                     .Include(c => c.Resources)
                     .FirstOrDefaultAsync(c => c.ClientId == clientId);
             }
@@ -103,7 +103,7 @@ namespace Client_Invoice_System.Repository
             {
                 using var context = _contextFactory.CreateDbContext();
                 return await context.Resources
-                    .Where(r => r.ClientId == clientId && !r.IsDeleted)  // ✅ Exclude soft-deleted resources
+                    .Where(r => r.ClientId == clientId && !r.IsDeleted)  
                     .Select(r => r.Employee)
                     .Distinct()
                     .ToListAsync();
@@ -124,7 +124,7 @@ namespace Client_Invoice_System.Repository
             {
                 using var context = _contextFactory.CreateDbContext();
                 var client = await context.Clients
-                    .Include(c => c.Resources)  // ✅ Include related entities
+                    .Include(c => c.Resources)  
                     .FirstOrDefaultAsync(c => c.ClientId == clientId);
 
                 if (client == null)
@@ -135,7 +135,6 @@ namespace Client_Invoice_System.Repository
 
                 client.IsDeleted = true;
 
-                // ✅ Soft delete related entities
                 if (client.Resources != null)
                 {
                     foreach (var resource in client.Resources)
@@ -158,7 +157,6 @@ namespace Client_Invoice_System.Repository
             {
                 using var context = _contextFactory.CreateDbContext();
                 return await context.Clients
-                    .Where(c => !c.IsDeleted)  // ✅ Exclude soft-deleted clients
                     .FirstOrDefaultAsync(c => c.ClientId == clientId);
             }
             catch (Exception ex)
@@ -216,7 +214,6 @@ namespace Client_Invoice_System.Repository
 
                 client.IsDeleted = false;
 
-                // ✅ Restore related entities
                 if (client.Resources != null)
                 {
                     foreach (var resource in client.Resources)

@@ -36,7 +36,6 @@ namespace Client_Invoice_System.Models
 
         public InvoiceStatus InvoiceStatuses { get; set; } = InvoiceStatus.Pending;
         public bool IsPaid => InvoiceStatuses == InvoiceStatus.Paid;
-        // ✅ Linked resources under invoice
         public virtual ICollection<InvoiceItem> InvoiceItems { get; set; } = new List<InvoiceItem>();
         public bool IsDeleted { get; set; } = false;
     }

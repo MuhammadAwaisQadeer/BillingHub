@@ -22,7 +22,7 @@ namespace Client_Invoice_System.Models
 
         public bool IsActive { get; set; } = true;
 
-        public bool IsInvoiced { get; set; }  // ✅ Tracks if this resource has been invoiced
+        public bool IsInvoiced { get; set; }  
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }

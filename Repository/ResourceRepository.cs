@@ -188,7 +188,6 @@ namespace Client_Invoice_System.Repository
             }
         }
 
-        // Soft delete implementation
         public async Task DeleteAsync(int resourceId)
         {
             try

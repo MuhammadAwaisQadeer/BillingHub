@@ -81,7 +81,6 @@ namespace Client_Invoice_System.Services
                     return false;
                 }
 
-                // Prevent overwriting critical fields (if needed)
                 existingInvoice.TotalAmount = updatedInvoice.TotalAmount;
                 existingInvoice.PaidAmount = updatedInvoice.PaidAmount;
                 existingInvoice.RemainingAmount = updatedInvoice.RemainingAmount;
@@ -236,7 +235,6 @@ namespace Client_Invoice_System.Services
                     return;
                 }
 
-                // Soft delete: Mark invoice as deleted instead of removing it
                 invoice.IsDeleted = true;
                 await _context.SaveChangesAsync();
 
@@ -254,7 +252,6 @@ namespace Client_Invoice_System.Services
         {
             try
             {
-                // Load client information (including country currency)
                var client = await _context.Clients
                 .Where(c => c.ClientId == clientId)
                 .Include(c => c.CountryCurrency)
@@ -332,7 +329,7 @@ namespace Client_Invoice_System.Services
 
                 // Determine culture and currency symbol
                 CultureInfo culture;
-                string currencySymbol = client?.CountryCurrency?.Symbol ?? "$"; // Default to USD symbol
+                string currencySymbol = client?.CountryCurrency?.Symbol ?? "$"; 
                 string currencyname = client?.CountryCurrency?.CurrencyName ?? "USD";
                 if (!string.IsNullOrEmpty(client?.CountryCurrency?.CurrencyCode))
                 {
@@ -342,12 +339,12 @@ namespace Client_Invoice_System.Services
                     }
                     catch (CultureNotFoundException)
                     {
-                        culture = new CultureInfo("en-US"); // Fallback to default
+                        culture = new CultureInfo("en-US"); 
                     }
                 }
                 else
                 {
-                    culture = new CultureInfo("en-US"); // Default if currency is not set
+                    culture = new CultureInfo("en-US"); 
                 }
 
                 using (MemoryStream ms = new MemoryStream())
@@ -443,7 +440,6 @@ namespace Client_Invoice_System.Services
                                         }
                                     });
 
-                                    // Invoice Items rows.
                                     //bool showRemainingColumn = (paidAmount > 0 && remainingAmount > 0);
 
                                     foreach (var item in invoiceItems)

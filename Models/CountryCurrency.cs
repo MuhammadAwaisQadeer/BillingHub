@@ -17,7 +17,7 @@ namespace Client_Invoice_System.Models
         public string Symbol { get; set; }
 
         [Required, StringLength(3)]
-        public string CurrencyCode { get; set; } // Example: USD, EUR, GBP
+        public string CurrencyCode { get; set; } 
         public bool IsDeleted { get; set; } = false;
     }
 }
